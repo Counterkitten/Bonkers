@@ -62,18 +62,18 @@ function BONK:Party_ConstructFrameIcon(frame, type, IDorValue)
         BONK:Reset_CooldownIcon(cooldown:GetParent())
     end)
 
-    icon.cdtext = icon:CreateFontString(nil, "OVERLAY")
-    icon.cdtext:SetFont(E["media"].normFont, 10, "OUTLINE")
+    icon.cdtext = icon.cooldown:CreateFontString(nil, "OVERLAY")
+    icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.CDFontSize, "OUTLINE")
     icon.cdtext:SetJustifyH("CENTER")
     icon.cdtext:SetPoint("CENTER", icon.cooldown)
     icon.cdtext:SetAlpha(0)
 
     if type == "dr" then
-        icon.text = icon:CreateFontString(nil, "OVERLAY")
-        icon.text:SetFont(E["media"].normFont, 10, "OUTLINE")
-    	icon.text:SetJustifyH("RIGHT")
-    	icon.text:SetPoint("BOTTOMRIGHT", icon.cooldown, -3, 0)
-        icon.text:SetAlpha(0)
+        icon.drtext = icon.cooldown:CreateFontString(nil, "OVERLAY")
+        icon.drtext:SetFont(E["media"].normFont, E.db.BONK.DRFontSize, "OUTLINE")
+    	icon.drtext:SetJustifyH("RIGHT")
+    	icon.drtext:SetPoint("BOTTOMRIGHT", icon.cooldown, -3, 0)
+        icon.drtext:SetAlpha(0)
         icon.diminished = 0
     end
     icon.reset = 0
@@ -192,9 +192,6 @@ function BONK:Party_ShowSpellFrame(spellID, sourceName, sourceGUID)
     icon.reset = start + icon.duration
 
     icon.cooldown:SetSwipeColor(0, 0, 0, 0.5)
-    -- icon.cooldown:SetScript("OnCooldownDone", function(cooldown)
-    --     BONK:Reset_CooldownIcon(cooldown:GetParent())
-    -- end)
     icon.cooldown:SetCooldown(start, duration)
 
     icon.cdtext:SetAlpha(1)
@@ -213,6 +210,7 @@ function BONK:Party_ShowSpellFrame(spellID, sourceName, sourceGUID)
         BONK:Update_CooldownIcon(icon, elapsed)
     end)
     BONK:Spell_UpdateIcons(frame)
+    BONK:DR_UpdateIcons(frame)
 end
 
 function BONK:Update_CooldownIcon(icon, elapsed)
@@ -254,8 +252,8 @@ function BONK:Reset_CooldownIcon(icon, hideTrinket)
             icon:Hide()
         end
         icon.cdtext:SetAlpha(0)
-        if icon.text then
-            icon.text:SetAlpha(0)
+        if icon.drtext then
+            icon.drtext:SetAlpha(0)
         end
     end
     BONK:Spell_UpdateIcons(icon:GetParent())
@@ -328,9 +326,9 @@ function BONK:Party_ShowDRFrame(category, spellID, sourceName, sourceGUID)
     icon.reset = icon.duration + now
 
     local text, r, g, b = unpack(drTexts[icon.diminished])
-	icon.text:SetText(text)
-	icon.text:SetTextColor(r,g,b)
-    icon.text:SetAlpha(1)
+	icon.drtext:SetText(text)
+	icon.drtext:SetTextColor(r,g,b)
+    icon.drtext:SetAlpha(1)
     icon.cdtext:SetAlpha(1)
 	icon.texture:SetTexture(GetSpellTexture(spellID))
 
@@ -343,6 +341,7 @@ function BONK:Party_ShowDRFrame(category, spellID, sourceName, sourceGUID)
     icon:SetScript("OnUpdate", function(icon, elapsed)
         BONK:Update_CooldownIcon(icon, elapsed)
     end)
+    BONK:Spell_UpdateIcons(frame)
     BONK:DR_UpdateIcons(frame)
 end
 
@@ -371,7 +370,9 @@ function BONK:DR_UpdateIcons(frame)
         local side = E.db.BONK.DRPosition
         local point = frame
         if icon.position == 1 then
-            if frame.trinket and side == E.db.BONK.TrinketPosition then
+            if side == E.db.BONK.CDPosition and #frame.activeSpells > 0 then
+                point = frame.activeSpells[#frame.activeSpells]
+            elseif frame.trinket and side == E.db.BONK.TrinketPosition then
                 point = frame.trinket
             end
         else
@@ -400,7 +401,7 @@ function BONK:Party_FindFrame(sourceGUID)
     return nil
 end
 
-function BONK:Update_Positions()
+function BONK:Update_PositionSettings()
     local groupSize = max(min(GetNumGroupMembers(), 5), 1)
 
     for i = 1, groupSize, 1 do
@@ -414,6 +415,26 @@ function BONK:Update_Positions()
             end
             BONK:Spell_UpdateIcons(frame)
             BONK:DR_UpdateIcons(frame)
+        end
+    end
+end
+
+function BONK:Update_IconSettings()
+    local groupSize = max(min(GetNumGroupMembers(), 5), 1)
+
+    for i = 1, groupSize, 1 do
+        local frame = UF.headers.party.groups[1][i]
+        if frame and frame.trinket then
+            frame.trinket.cdtext:SetFont(E["media"].normFont, E.db.BONK.CDFontSize, "OUTLINE")
+        end
+
+        for _, icon in pairs(frame.activeSpells) do
+            icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.CDFontSize, "OUTLINE")
+        end
+
+        for _, icon in pairs(frame.activeDRs) do
+            icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.CDFontSize, "OUTLINE")
+            icon.drtext:SetFont(E["media"].normFont, E.db.BONK.DRFontSize, "OUTLINE")
         end
     end
 end

@@ -15,7 +15,9 @@ BONK.callbacks = BONK.callbacks or LibStub("CallbackHandler-1.0"):New(BONK)
 P["BONK"] = {
 	["TrinketPosition"] = "LEFT",
 	["CDPosition"] = "LEFT",
-    ["DRPosition"] = "RIGHT"
+    ["DRPosition"] = "RIGHT",
+    ["CDFontSize"] = 20,
+    ["DRFontSize"] = 20,
 }
 
 addonTable[1] = BONK
@@ -29,7 +31,8 @@ _G[addonName] = addonTable;
 --Function we can call when a setting changes.
 --In this case it just checks if "SomeToggleOption" is enabled. If it is it prints the value of "SomeRangeOption", otherwise it tells you that "SomeToggleOption" is disabled.
 function BONK:Update()
-	BONK:Update_Positions()
+	BONK:Update_PositionSettings()
+    BONK:Update_IconSettings()
 end
 
 --This function inserts our GUI table into the ElvUI Config. You can read about AceConfig here: http://www.wowace.com/addons/ace3/pages/ace-config-3-0-options-tables/
@@ -42,7 +45,7 @@ function BONK:InsertOptions()
 			TrinketPosition = {
 				order = 1,
 				type = "select",
-				name = "TrinketPosition",
+				name = "Trinket Position",
                 values = {
                     ["RIGHT"] = "RIGHT",
                     ["LEFT"] = "LEFT",
@@ -52,13 +55,13 @@ function BONK:InsertOptions()
 				end,
 				set = function(info, value)
 					E.db.BONK.TrinketPosition = value
-					BONK:Update() --We changed a setting, call our Update function
+					BONK:Update()
 				end,
 			},
             CDPosition = {
 				order = 2,
 				type = "select",
-				name = "CDPosition",
+				name = "Cooldown Position",
                 values = {
                     ["RIGHT"] = "RIGHT",
                     ["LEFT"] = "LEFT",
@@ -68,13 +71,13 @@ function BONK:InsertOptions()
 				end,
 				set = function(info, value)
 					E.db.BONK.CDPosition = value
-					BONK:Update() --We changed a setting, call our Update function
+					BONK:Update()
 				end,
 			},
             DRPosition = {
 				order = 3,
 				type = "select",
-				name = "DRPosition",
+				name = "DR Position",
                 values = {
                     ["RIGHT"] = "RIGHT",
                     ["LEFT"] = "LEFT",
@@ -84,7 +87,33 @@ function BONK:InsertOptions()
 				end,
 				set = function(info, value)
 					E.db.BONK.DRPosition = value
-					BONK:Update() --We changed a setting, call our Update function
+					BONK:Update()
+				end,
+			},
+            CDFontSize = {
+				order = 4,
+				type = "range",
+				name = "Timer Font Size",
+                min = 1, max = 40, step = 1,
+                get = function(info)
+					return E.db.BONK.CDFontSize
+				end,
+				set = function(info, value)
+					E.db.BONK.CDFontSize = value
+					BONK:Update()
+				end,
+			},
+            DRFontSize = {
+				order = 5,
+				type = "range",
+				name = "DR Font Size",
+                min = 1, max = 40, step = 1,
+                get = function(info)
+					return E.db.BONK.DRFontSize
+				end,
+				set = function(info, value)
+					E.db.BONK.DRFontSize = value
+					BONK:Update()
 				end,
 			},
 		},
