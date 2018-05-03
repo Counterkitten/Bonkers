@@ -278,7 +278,7 @@ function BONK:InsertOptions()
                         order = 4,
                         type = "range",
                         name = "Icon Size",
-                        min = 0.1, max = 1, step = 0.01,
+                        min = 0.1, max = 2, step = 0.01,
                         get = function(info)
                             return E.db.BONK.Trinket.IconSize
                         end,
@@ -485,6 +485,7 @@ function BONK:Initialize()
 	--Register plugin so options are properly inserted when config is loaded
 
 	EP:RegisterPlugin(addonName, BONK.InsertOptions)
+    BONK:InitFrameManager()
     BONK:InitCombatHandler()
     BONK:InitZoneTracker()
 end

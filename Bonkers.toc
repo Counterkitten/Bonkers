@@ -12,6 +12,7 @@ Bonkers.lua
 EventHandler.lua
 IconFrames.lua
 UnitFrames.lua
+FrameManager.lua
 CombatHandler.lua
 ZoneTracker.lua
 

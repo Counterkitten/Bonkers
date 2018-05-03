@@ -5,13 +5,13 @@ local BCH = BONK:NewEventHandler()
 BONK.BCH = BCH
 
 ------
--- BONK:InitCombatHandler
+-- BCH:Initialize
 ------
-function BONK:InitCombatHandler()
-    BCH.db = OmniBar.db
-    BCH.key = "OmniBar"..OmniBar.index-1
-    BCH.cooldowns = db.cooldowns
-    BCH.settings = db.profile.bars[BCH.key]
+function BCH:Initialize()
+    self.db = OmniBar.db
+    self.key = "OmniBar"..OmniBar.index-1
+    self.cooldowns = db.cooldowns
+    self.settings = db.profile.bars[self.key]
 end
 
 ------

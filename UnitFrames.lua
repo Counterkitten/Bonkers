@@ -1,8 +1,7 @@
 local BONK, E, L, V, P, G = unpack(select(2, ...))
 local UF = E:GetModule("UnitFrames")
-local DRData = LibStub("DRData-1.0")
-local _G = _G
 
+local _G = _G
 local CreateFrame = CreateFrame
 local GetInspectSpecialization = GetInspectSpecialization
 local GetNumGroupMembers = GetNumGroupMembers
@@ -10,118 +9,80 @@ local GetSpecialization = GetSpecialization
 local GetSpellInfo = GetSpellInfo
 local GetTime = GetTime
 
-local drTexts = {
-    [1] = {"\194\189", 0, 1, 0},
-    [0.5] = {"\194\188", 1, 0.65, 0},
-    [0.25] = {"%", 1, 0, 0},
-    [0] = {"%", 1, 0, 0},
-}
+local db = E.db.BONK
+
+BUF = {}
 
 ------
--- BONK:Party_ConstructFrame
+-- BUF:NewFrame
 ------
-function BONK:Party_ConstructFrame(frame)
-    frame.trinket = BONK:Party_ConstructFrameIcon(frame, "trinket")
-    frame.trinket.texture:SetTexture("Interface\\Icons\\INV_Jewelry_Necklace_37")
-
-    if E.db.BONK.Trinket.Position == "LEFT" then
-        frame.trinket:SetPoint("TOPRIGHT", frame, "TOPLEFT", -1 * E.db.BONK.Trinket.SeparatorX, 0)
-    else
-        frame.trinket:SetPoint("TOPLEFT", frame, "TOPRIGHT", E.db.BONK.Trinket.SeparatorX, 0)
-    end
-    if E.db.BONK.Trinket.Enabled == true then
-        frame.trinket:Show()
-    else
-        frame.trinket:Hide()
-    end
-
-    frame.spell = {}
-    frame.dr = {}
-    frame.activeSpells = {}
-    frame.activeDRs = {}
+function BUF:NewFrame(self, size)
+    self.size = size
+    self.spells = {}
+    self.drs = {}
+    self.active = {}
+    self.active.spells = {}
+    self.active.drs = {}
 end
 
 ------
--- BONK:Party_ConstructFrameIcon
+-- BUF:AssignFrame
 ------
-function BONK:Party_ConstructFrameIcon(frame, type)
-    return BONK:Party_ConstructFrameIcon(frame, type, nil)
+function BUF:AssignFrame(self, parent)
+    self.parent = parent
+
+    local trinket = BIF
+    trinket:NewIconFrame(trinket, 0, parent:GetHeight() * self.size, db.Trinket.TimerFontSize, true)
+    trinket:SetTextureString(trinket, "Interface\\Icons\\INV_Jewelry_Necklace_37")
+    trinket:Show(trinket, parent, parent, "TOP", db.Trinket.Position, db.Trinket.SeparatorX, 0)
+
+    self.trinket = trinket
 end
 
 ------
--- BONK:Party_ConstructFrameIcon
+-- BUF:ReleaseFrame
 ------
-function BONK:Party_ConstructFrameIcon(frame, type, IDorValue)
-    local name = "Trinket"
-    local key = "spellID"
-    local size = 1
-
-    if type == "spell" then
-        name = "Spell"..IDorValue
-        size = E.db.BONK.CD.IconSize
-    elseif type == "dr" then
-        name = "DR"..IDorValue
-        key = "category"
-        size = E.db.BONK.DR.IconSize
+function BUF:Release(self)
+    -- Order matters if CD and DR are on the same side due to SetPoint
+    if (db.General.Order == "cd") then
+        self:ReleaseIcons("spells")
+        self:ReleaseIcons("drs")
     else
-        key = "isTrinket"
-        IDorValue = true
-        size = E.db.BONK.Trinket.IconSize
+        self:ReleaseIcons("drs")
+        self:ReleaseIcons("spells")
     end
 
-    local icon = CreateFrame('Button', frame:GetName()..name, frame, "ActionButtonTemplate")
-    icon[key] = IDorValue
-    icon.spacing = E.Spacing
-    icon:SetFrameLevel(frame.RaisedElementParent:GetFrameLevel() + 10)
+    self.trinket:Release()
+    self.unit = nil
+    self.GUID = nil
+    self.parent = nil
+end
 
-    icon:SetWidth(frame:GetHeight()*size)
-    icon:SetHeight(frame:GetHeight()*size)
-
-    icon:SetNormalTexture(nil)
-    icon:ClearAllPoints()
-    icon.texture = icon:CreateTexture()
-    icon.texture:SetAllPoints(icon)
-    icon.texture:SetHeight(icon:GetHeight())
-    icon.texture:SetWidth(icon:GetWidth())
-
-
-    icon.cooldown = CreateFrame("Cooldown", name.."Cooldown", icon, "CooldownFrameTemplate")
-    icon.cooldown:SetAllPoints(icon)
-    icon.cooldown:SetReverse(true)
-    icon.cooldown:SetScript("OnCooldownDone", function(cooldown)
-        local i = cooldown:GetParent()
-        BONK:Reset_CooldownIcon(i)
-        BONK:Spell_UpdateIcons(i:GetParent())
-        BONK:DR_UpdateIcons(i:GetParent())
-    end)
-
-    icon.cdtext = icon.cooldown:CreateFontString(nil, "OVERLAY")
-    icon.cdtext:SetJustifyH("CENTER")
-    icon.cdtext:SetPoint("CENTER", icon.cooldown)
-    icon.cdtext:SetAlpha(0)
-
-    if type == "spell" then
-        icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.CD.TimerFontSize, "OUTLINE")
-    elseif type == "dr" then
-        icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.DR.TimerFontSize, "OUTLINE")
-        icon.drtext = icon.cooldown:CreateFontString(nil, "OVERLAY")
-        icon.drtext:SetFont(E["media"].normFont, E.db.BONK.DR.DRFontSize, "OUTLINE")
-    	icon.drtext:SetJustifyH("RIGHT")
-    	icon.drtext:SetPoint("BOTTOMRIGHT", icon.cooldown, -3, 0)
-        icon.drtext:SetAlpha(0)
-        icon.diminished = 0
-    else
-        icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.Trinket.TimerFontSize, "OUTLINE")
+------
+-- BUF:ReleaseIcons
+------
+function BUF:ReleaseIcons(frame, type)
+    for i = #frame.active[type], 1, -1 do
+        local icon = frame.active[type][i]
+        icon:Release()
+        frame[type][icon.iconID] = nil
     end
-    icon.reset = 0
-    icon.timeLeft = 0
 
-    --E:SetUpAnimGroup(icon)
-    --E:RegisterCooldown(icon.cooldown)
+    for _, icon in pairs(frame[type]) do
+        if icon then
+            icon:Release()
+        end
+    end
+end
 
-    icon.active = false
-
-    return icon
+------
+-- BUF:ReleaseAllFrames
+------
+function BUF:ReleaseAllFrames(i)
+    for i = 1, 5, 1 do
+        self:ReleaseUnitFrame(self.party[i])
+        self:ReleaseUnitFrame(self.arena[i])
+    end
 end
 
 ------
@@ -167,13 +128,13 @@ function BONK:Party_ShowSpellFrame(spellID, sourceName, sourceGUID)
     if isTrinket == true then
         icon = frame.trinket
         if icon.timeLeft > duration then return end
-        icon.spellID = spellID
+        icon.iconID = spellID
     else
-        if frame.spell[spellID] then
-            icon = frame.spell[spellID]
+        if frame.spells[spellID] then
+            icon = frame.spells[spellID]
         else
             icon = BONK:Party_ConstructFrameIcon(frame, "spell", spellID)
-            frame.spell[spellID] = icon
+            frame.spells[spellID] = icon
         end
     end
     if not icon then return end
@@ -227,9 +188,9 @@ function BONK:Party_ShowSpellFrame(spellID, sourceName, sourceGUID)
         icon.active = true
         if isTrinket == false then
             if OmniBar.cooldowns[spellID] and OmniBar.cooldowns[spellID].default then
-                table.insert(frame.activeSpells, 1, icon)
+                table.insert(frame.active.spells, 1, icon)
             else
-                table.insert(frame.activeSpells, icon)
+                table.insert(frame.active.spells, icon)
             end
         end
     end
@@ -246,22 +207,22 @@ end
 function BONK:Spell_UpdateIcons(frame)
     local remove = {}
 
-    if not frame.activeSpells then return end
-    for _,icon in pairs(frame.activeSpells) do
+    if not frame.active.spells then return end
+    for _,icon in pairs(frame.active.spells) do
         if icon.active == false then
-            remove[icon.spellID] = true
+            remove[icon.iconID] = true
         end
     end
 
-    for i = #frame.activeSpells, 1, -1 do
-        local icon = frame.activeSpells[i]
-        if (remove[icon.spellID]) then
-            table.remove(frame.activeSpells, i)
+    for i = #frame.active.spells, 1, -1 do
+        local icon = frame.active.spells[i]
+        if (remove[icon.iconID]) then
+            table.remove(frame.active.spells, i)
         end
     end
 
-    for i = 1, #frame.activeSpells, 1 do
-        local icon = frame.activeSpells[i]
+    for i = 1, #frame.active.spells, 1 do
+        local icon = frame.active.spells[i]
         local paddingX = E.db.BONK.CD.PaddingX
         local paddingY = 0
         local point1 = "TOPRIGHT"
@@ -284,14 +245,14 @@ function BONK:Spell_UpdateIcons(frame)
                     end
                     local heightDiff = (frame:GetHeight()/2) - icon:GetHeight()
                     paddingY = op * (heightDiff - E.db.BONK.General.SeparatorY)
-                elseif E.db.BONK.General.Order == "DR" and #frame.activeDRs > 0 then
-                    ref = frame.activeDRs[#frame.activeDRs]
+                elseif E.db.BONK.General.Order == "DR" and #frame.active.drs > 0 then
+                    ref = frame.active.drs[#frame.active.drs]
                     paddingX = paddingX + E.db.BONK.DR.PaddingX
                 end
             end
             paddingX = paddingX + E.db.BONK.CD.SeparatorX
         else
-            ref = frame.activeSpells[i-1]
+            ref = frame.active.spells[i-1]
             paddingX = paddingX * 2
         end
         icon:ClearAllPoints()
@@ -317,11 +278,11 @@ function BONK:Party_ShowDRFrame(category, spellID, sourceName, sourceGUID)
     local duration = 0
 
     local icon = nil
-    if frame.dr[category] then
-        icon = frame.dr[category]
+    if frame.drs[category] then
+        icon = frame.drs[category]
     else
         icon = BONK:Party_ConstructFrameIcon(frame, "dr", category)
-        frame.dr[category] = icon
+        frame.drs[category] = icon
     end
 
     if sourceName == "Test" then
@@ -358,7 +319,7 @@ function BONK:Party_ShowDRFrame(category, spellID, sourceName, sourceGUID)
     icon.cooldown:SetSwipeColor(0, 0, 0, 0.65)
     if not icon.active or icon.active == false then
         icon.active = true
-        table.insert(frame.activeDRs, icon)
+        table.insert(frame.active.drs, icon)
     end
     icon:SetScript("OnUpdate", function(icon, elapsed)
         BONK:Update_CooldownIcon(icon, elapsed)
@@ -373,22 +334,22 @@ end
 function BONK:DR_UpdateIcons(frame)
     local remove = {}
 
-    if not frame.activeDRs then return end
-    for _,icon in pairs(frame.activeDRs) do
+    if not frame.active.drs then return end
+    for _,icon in pairs(frame.active.drs) do
         if icon.active == false then
-            remove[icon.category] = true
+            remove[icon.iconID] = true
         end
     end
 
-    for i = #frame.activeDRs, 1, -1 do
-        local icon = frame.activeDRs[i]
-        if (remove[icon.category]) then
-            table.remove(frame.activeDRs, i)
+    for i = #frame.active.drs, 1, -1 do
+        local icon = frame.active.drs[i]
+        if (remove[icon.iconID]) then
+            table.remove(frame.active.drs, i)
         end
     end
 
-    for i = 1, #frame.activeDRs, 1 do
-        local icon = frame.activeDRs[i]
+    for i = 1, #frame.active.drs, 1 do
+        local icon = frame.active.drs[i]
         local paddingX = E.db.BONK.DR.PaddingX
         local paddingY = 0
         local point1 = "TOPRIGHT"
@@ -411,14 +372,14 @@ function BONK:DR_UpdateIcons(frame)
                     end
                     local heightDiff = (frame:GetHeight()/2) - icon:GetHeight()
                     paddingY = op * (heightDiff - E.db.BONK.General.SeparatorY)
-                elseif E.db.BONK.General.Order == "CD" and #frame.activeSpells > 0 then
-                    ref = frame.activeSpells[#frame.activeSpells]
+                elseif E.db.BONK.General.Order == "CD" and #frame.active.spells > 0 then
+                    ref = frame.active.spells[#frame.active.spells]
                     paddingX = paddingX + E.db.BONK.CD.PaddingX
                 end
             end
             paddingX = paddingX + E.db.BONK.DR.SeparatorX
         else
-            ref = frame.activeDRs[i-1]
+            ref = frame.active.drs[i-1]
             paddingX = paddingX * 2
         end
         icon:ClearAllPoints()
@@ -496,21 +457,6 @@ function BONK:Reset_CooldownIcon(icon, hideTrinket)
 end
 
 ------
--- BONK:Party_FindFrame
-------
-function BONK:Party_FindFrame(sourceGUID)
-    local groupSize = max(min(GetNumGroupMembers(), 5), 1)
-
-    for i=1,groupSize,1 do
-        local f = UF.headers.party.groups[1][i]
-        if f and f.unit and UnitGUID(f.unit) == sourceGUID then
-            return f
-        end
-    end
-    return nil
-end
-
-------
 -- BONK:Update_PositionSettings
 ------
 function BONK:Update_PositionSettings()
@@ -557,13 +503,13 @@ function BONK:Update_IconSettings()
             BONK:Update_IconPoints(frame, frame.trinket, E.db.BONK.Trinket.IconSize)
         end
 
-        for _, icon in pairs(frame.activeSpells) do
+        for _, icon in pairs(frame.active.spells) do
             icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.CD.TimerFontSize, "OUTLINE")
 
             BONK:Update_IconPoints(frame, icon, E.db.BONK.CD.IconSize)
         end
 
-        for _, icon in pairs(frame.activeDRs) do
+        for _, icon in pairs(frame.active.drs) do
             icon.cdtext:SetFont(E["media"].normFont, E.db.BONK.DR.TimerFontSize, "OUTLINE")
             icon.drtext:SetFont(E["media"].normFont, E.db.BONK.DR.DRFontSize, "OUTLINE")
 
@@ -650,14 +596,14 @@ function BONK:Hide_TestIcons()
                     f.trinket.isTest = false
                 end
 
-                for _, icon in pairs(f.activeSpells) do
+                for _, icon in pairs(f.active.spells) do
                     if icon.isTest and icon.isTest == true then
                         BONK:Reset_CooldownIcon(icon)
                         icon.isTest = false
                     end
                 end
 
-                for _, icon in pairs(f.activeDRs) do
+                for _, icon in pairs(f.active.drs) do
                     if icon.isTest and icon.isTest == true then
                         BONK:Reset_CooldownIcon(icon)
                         icon.isTest = false

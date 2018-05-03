@@ -1,14 +1,14 @@
 local BONK, E, L, V, P, G = unpack(select(2, ...))
 
+local IsInInstance = IsInInstance
+
 local BZT = BONK:NewEventHandler()
 BONK.BZT = BZT
 
-local IsInInstance = IsInInstance
-
 ------
--- BONK:InitZoneTracker
+-- BZT:Initialize
 ------
-function BONK:InitZoneTracker()
+function BZT:Initialize()
     BZT.instanceType = "none"
     BZT:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     BZT:RegisterEvent("PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA")
