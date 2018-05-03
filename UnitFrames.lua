@@ -503,7 +503,7 @@ function BONK:Party_FindFrame(sourceGUID)
 
     for i=1,groupSize,1 do
         local f = UF.headers.party.groups[1][i]
-        if f and f.unit and (f.unit:match("party%d?$") or f.unit == "player") and UnitGUID(f.unit) == sourceGUID then
+        if f and f.unit and UnitGUID(f.unit) == sourceGUID then
             return f
         end
     end
