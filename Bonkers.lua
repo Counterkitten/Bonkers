@@ -17,6 +17,7 @@ P["BONK"] = {
         ["Stack"] = false,
         ["SeparatorY"] = 3,
         ["Order"] = "CD",
+        ["Debug"] = false
     },
     ["Trinket"] = {
         ["Enabled"] = true,
@@ -55,8 +56,8 @@ _G[addonName] = addonTable;
 --Function we can call when a setting changes.
 --In this case it just checks if "SomeToggleOption" is enabled. If it is it prints the value of "SomeRangeOption", otherwise it tells you that "SomeToggleOption" is disabled.
 function BONK:Update()
-	BONK:Update_PositionSettings()
-    BONK:Update_IconSettings()
+	BUF:Update_PositionSettings()
+    BUF:Update_IconSettings()
 end
 
 --This function inserts our GUI table into the ElvUI Config. You can read about AceConfig here: http://www.wowace.com/addons/ace3/pages/ace-config-3-0-options-tables/
@@ -209,7 +210,7 @@ function BONK:InsertOptions()
                         type = "execute",
                         name = "Display Test Icons",
                         func = function()
-                            BONK:Show_TestIcons()
+                            BONK.BUF:ShowTestIcons()
                         end,
                     },
                     HideIcons = {
@@ -217,7 +218,19 @@ function BONK:InsertOptions()
                         type = "execute",
                         name = "Hide Test Icons",
                         func = function()
-                            BONK:Hide_TestIcons()
+                            BONK.BUF:HideTestIcons()
+                        end,
+                    },
+                    Debug = {
+                        order = 17,
+                        type = "toggle",
+                        name = "Debug Mode",
+                        desc = "Print debug message",
+                        get = function(info)
+                            return E.db.BONK.General.Debug
+                        end,
+                        set = function(info, value)
+                            E.db.BONK.General.Debug = value
                         end,
                     },
                 },
@@ -461,12 +474,19 @@ function BONK:InsertOptions()
 	}
 end
 
+function BONK:Print(message)
+    if E.db.BONK.General.Debug and E.db.BONK.General.Debug == true then
+        print(message)
+    end
+end
+
 function BONK:Initialize()
     self.initialized = true
 	--Register plugin so options are properly inserted when config is loaded
 
 	EP:RegisterPlugin(addonName, BONK.InsertOptions)
-    BONK:InitOmni()
+    BONK:InitCombatHandler()
+    BONK:InitZoneTracker()
 end
 
 E:RegisterModule(addonName) --Register the module with ElvUI. ElvUI will now call BONK:Initialize() when ElvUI is ready to load our plugin.

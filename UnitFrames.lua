@@ -613,9 +613,9 @@ function BONK:Group_Roster_Update()
 end
 
 ------
--- BONK:Show_TestIcons
+-- BONK:ShowTestIcons
 ------
-function BONK:Show_TestIcons()
+function BONK:ShowTestIcons()
     local groupSize = max(min(GetNumGroupMembers(), 5), 1)
 
     for i = 1, groupSize, 1 do
@@ -668,17 +668,4 @@ function BONK:Hide_TestIcons()
             end
         end
     end
-end
-
-function dump(o)
-   if type(o) == 'table' then
-      local s = '{ '
-      for k,v in pairs(o) do
-         if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. '['..k..'] = ' .. dump(v) .. ','
-      end
-      return s .. '} '
-   else
-      return tostring(o)
-   end
 end

@@ -9,6 +9,9 @@
 Libs\load_libs.xml
 
 Bonkers.lua
+EventHandler.lua
+IconFrames.lua
 UnitFrames.lua
-Omni.lua
+CombatHandler.lua
+ZoneTracker.lua
 
