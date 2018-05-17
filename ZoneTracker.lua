@@ -9,9 +9,10 @@ BONK.BZT = BZT
 -- BZT:Initialize
 ------
 function BZT:Initialize()
-    BZT.instanceType = "none"
-    BZT:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    BZT:RegisterEvent("PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA")
+    BONK:Print("BZT Initializing")
+    self.instanceType = "none"
+    self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA")
 end
 
 ------
@@ -29,14 +30,14 @@ end
 -- BZT:ZONE_CHANGED_NEW_AREA
 ------
 function BZT:ZONE_CHANGED_NEW_AREA()
+    BONK:Print("Changing Zone")
     local _, instanceType = IsInInstance()
 
-    if instanceType == "arena" then
-        if self:InArena() == false then
-            BONK.BCH:Start()
-            BONK:Group_Roster_Update()
-        end
-    elseif self:InArena() == true then
+    if self:InArena() == true then
+        BONK.BFM:Start()
+        BONK.BCH:Start()
+    else
+        BONK.BFM:Stop()
         BONK.BCH:Stop()
     end
     self.instanceType = instanceType

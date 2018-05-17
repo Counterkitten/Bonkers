@@ -9,20 +9,24 @@ local BFM = BONK:NewEventHandler()
 BONK.BFM = BFM
 
 ------
--- BONK:InitFrameManager
+-- BFM:Initialize
 ------
-function BONK:InitFrameManager()
-    BFM.party = {}
-    BFM.arena = {}
+function BFM:Initialize()
+    BONK:Print("BFM Initializing")
+    self.party = {}
+    self.arena = {}
+    self.map = {}
 
+    self:InitFrames(self.party, false)
+    self:InitFrames(self.arena, true)
+end
+
+------
+-- BFM:InitFrames
+------
+function BFM:InitFrames(group, hostile)
     for i = 1, 5, 1 do
-        local partyUF = BFM:FindUFByIndex("party", i)
-        local partyFrame = BUF
-        partyFrame:NewFrame(partyFrame, db.Trinket.IconSize)
-
-
-
-        BFM.arena[i] =
+        group[i] = BONK:NewFrame(hostile)
     end
 end
 
@@ -30,50 +34,126 @@ end
 -- BFM:Start
 ------
 function BFM:Start()
+    self.running = true
     self:RegisterEvent("GROUP_ROSTER_UPDATE")
     -- self:RegisterEvent("ARENA_OPPONENT_UPDATE")
     -- self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
+
+    self:AssignPartyFrames()
 end
 
 ------
 -- BFM:Stop
 ------
 function BFM:Stop()
+    self.running = false
     self:UnregisterAllEvents()
     self:ReleaseAllFrames()
 end
 
 ------
--- BFM:FindUFByIndex
+-- BFM:AssignPartyFrames
 ------
-function BFM:FindUFByIndex(type, index)
-    local groupSize = max(min(GetNumGroupMembers(), 5), 1)
-
-    for i=1,groupSize,1 do
-        local f = UF.headers.party.groups[1][i]
-        if f and f.unit and UnitGUID(f.unit) == sourceGUID then
-            return f
-        end
+function BFM:AssignPartyFrames()
+    for i = 1, self:GroupSize(), 1 do
+        local uf = UF.headers.party.groups[1][i]
+        self:AssignGroupFrame(uf, self.party, i)
     end
-    return nil
 end
 
 ------
--- BFM:FindUFByGUID
+-- BFM:AssignArenaFrames
 ------
-function BFM:FindUFByGUID(type, GUID)
-    local groupSize = max(min(GetNumGroupMembers(), 5), 1)
+function BFM:AssignArenaFrames()
 
-    for i=1,groupSize,1 do
-        local f = UF.headers.party.groups[1][i]
-        if f and f.unit and UnitGUID(f.unit) == sourceGUID then
-            return f
-        end
-    end
-    return nil
 end
 
 ------
--- BFM:FindUFByGUID
+-- BFM:AssignFrame
 ------
-function BFM:FindFrame(type, value)
+function BFM:AssignGroupFrame(unitFrame, group, i)
+    if not unitFrame or not unitFrame.unit then return end
+
+    local GUID = UnitGUID(unitFrame.unit)
+    if not GUID or self.map[GUID] then return end
+
+    local frame = group[i]
+    if frame:IsAssigned(frame) then
+        frame = FindFreeFrame(group)
+
+        if not frame then
+            E:Print("No frame found, resetting")
+            self:ReleaseAllFrames()
+            self:AssignPartyFrames()
+            self:AssignArenaFrames()
+            return
+        end
+    end
+
+    frame:AssignFrame(frame, unitFrame, hostile)
+    self.map[GUID] = frame
+end
+
+------
+-- BFM:FindFreeFrame
+------
+function BFM:FindFreeFrame(group)
+    local found = nil
+    for i = 1, 5, 1 do
+        if group[i]:IsAssigned(group[i]) then
+            found = group[i]
+            break
+        end
+    end
+
+    return found
+end
+
+------
+-- BFM:ReleaseAllFrames
+------
+function BFM:ReleaseAllFrames()
+    for i = 1, 5, 1 do
+        self.party[i]:Release(self.party[i])
+        self.arena[i]:Release(self.arena[i])
+    end
+    self.map = {}
+end
+
+------
+-- BFM:GetSpecID
+------
+function BFM:GetUnitFrame(GUID)
+    if self.map[GUID] then
+        return self.map[GUID]
+    end
+end
+
+------
+-- BFM:GroupSize
+------
+function BFM:GroupSize()
+    return max(min(GetNumGroupMembers(), 5), 1)
+end
+
+------
+-- BFM:GROUP_ROSTER_UPDATE
+------
+function BFM:GROUP_ROSTER_UPDATE()
+    print(self.started)
+    self:AssignPartyFrames()
+end
+
+------
+-- BFM:ARENA_OPPONENT_UPDATE
+------
+function BFM:ARENA_OPPONENT_UPDATE()
+
+end
+
+------
+-- BFM:ARENA_PREP_OPPONENT_SPECIALIZATIONS
+------
+function BFM:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
+
+end

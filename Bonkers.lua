@@ -16,7 +16,7 @@ P["BONK"] = {
     ["General"] = {
         ["Stack"] = false,
         ["SeparatorY"] = 3,
-        ["Order"] = "CD",
+        ["Order"] = "spells",
         ["Debug"] = false
     },
     ["Trinket"] = {
@@ -146,8 +146,8 @@ function BONK:InsertOptions()
                         type = "select",
                         name = "Display Order",
                         values = {
-                            ["CD"] = "Cooldowns First",
-                            ["DR"] = "DRs First",
+                            ["spells"] = "Cooldowns First",
+                            ["drs"] = "DRs First",
                         },
                         get = function(info)
                             return E.db.BONK.General.Order
@@ -481,13 +481,14 @@ function BONK:Print(message)
 end
 
 function BONK:Initialize()
+    BONK:Print("Bonkers Initializing")
     self.initialized = true
 	--Register plugin so options are properly inserted when config is loaded
 
 	EP:RegisterPlugin(addonName, BONK.InsertOptions)
-    BONK:InitFrameManager()
-    BONK:InitCombatHandler()
-    BONK:InitZoneTracker()
+    self.BFM:Initialize()
+    self.BCH:Initialize()
+    self.BZT:Initialize()
 end
 
 E:RegisterModule(addonName) --Register the module with ElvUI. ElvUI will now call BONK:Initialize() when ElvUI is ready to load our plugin.
