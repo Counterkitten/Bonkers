@@ -84,7 +84,7 @@ function BIF:BeginCooldown(spellID, startTime, duration, category)
     if self.active then
         if startTime - self.icon.startTime < 1 then return end
 
-        if not self.icon.drtext then
+        if not self.icon.drtext and not self.textureOverride then
             self:UpdateCooldownMark(self.icon.timeLeft, self.icon.duration)
         end
     end
