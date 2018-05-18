@@ -1,5 +1,6 @@
 local BONK, E, L, V, P, G = unpack(select(2, ...))
 local DRData = LibStub("DRData-1.0")
+local SharedMedia = LibStub("LibSharedMedia-3.0");
 
 local GetSpellTexture = GetSpellTexture
 
@@ -16,9 +17,10 @@ BIF.__index = BIF
 ------
 -- BONK:NewIconFrame
 ------
-function BONK:NewIconFrame(iconID, unitFrame, size, fontSize, drFontSize, priority)
+function BONK.NewIconFrame(iconID, unitFrame, size, fontSize, drFontSize, priority)
     BONK:Print("New Icon Frame")
-    self = setmetatable({}, BIF)
+    local self = setmetatable({}, BIF)
+    self.active = false
     self.iconID = iconID
     self.unitFrame = unitFrame
     self.parent = unitFrame.parent
@@ -30,15 +32,15 @@ function BONK:NewIconFrame(iconID, unitFrame, size, fontSize, drFontSize, priori
     end
     self.priority = priority
 
-    self:ConstructIcon(self)
+    self:ConstructIcon(iconID)
     return self
 end
 
 ------
 -- BIF:ConstructIcon
 ------
-function BIF:ConstructIcon(self)
-    local icon = CreateFrame('Button', nil, self.parent, "ActionButtonTemplate")
+function BIF:ConstructIcon(iconID)
+    local icon = CreateFrame('Button', self.parent:GetName()..iconID, self.parent, "ActionButtonTemplate")
     icon.iconFrame = self
 
     icon.spacing = E.Spacing
@@ -48,19 +50,19 @@ function BIF:ConstructIcon(self)
 
     icon:ClearAllPoints()
     icon:SetNormalTexture(nil)
-    icon.texture = BIF:CreateTexture(icon)
-    icon.cooldown = BIF:CreateCooldown(icon)
+    icon.texture = self:CreateTexture(icon)
+    icon.cooldown = self:CreateCooldown(icon)
+    icon.border = self:CreateBorder(icon)
 
-    icon.cdtext = BIF:CreateText(icon, self.fontSize)
+    icon.cdtext = self:CreateText(icon, self.fontSize)
 
     if self.drFontSize then
-        icon.drtext =  BIF:CreateText(icon, self.drFontSize)
+        icon.drtext =  self:CreateText(icon, self.drFontSize)
         icon.diminished = 0
     end
 
     icon.reset = 0
     icon.timeLeft = 0
-    icon.active = nil
     icon.showing = nil
 
     self.icon = icon
@@ -69,7 +71,8 @@ end
 ------
 -- BIF:BeginCooldown
 ------
-function BIF:BeginCooldown(self, spellID, startTime, duration, category)
+function BIF:BeginCooldown(spellID, startTime, duration, category)
+    print("Begin")
     self.icon:UnregisterAllEvents()
 
     self.active = true
@@ -79,9 +82,9 @@ function BIF:BeginCooldown(self, spellID, startTime, duration, category)
     self.icon.cdtext:SetAlpha(1)
     if self.icon.drtext then
         if not self.icon.reset or self.icon.reset <= startTime then
-            icon.diminished = 1
+            self.icon.diminished = 1
         else
-            icon.diminished = DRData:NextDR(icon.diminished, category)
+            self.icon.diminished = DRData:NextDR(icon.diminished, category)
         end
         local text, r, g, b = unpack(drTexts[self.icon.diminished])
         self.icon.drtext:SetText(text)
@@ -90,13 +93,13 @@ function BIF:BeginCooldown(self, spellID, startTime, duration, category)
     end
 
     if not self.textureOverride then
-        BIF:SetTexture(self, spellID)
+        self:SetTexture(spellID)
     end
 
     self.icon.reset = startTime + duration
     self.icon.cooldown:SetCooldown(startTime, duration)
     self.icon:SetScript("OnUpdate", function(icon, elapsed)
-        BIF:UpdateCooldown(icon, elapsed)
+        self:UpdateCooldown(icon, elapsed)
     end)
 
 end
@@ -104,9 +107,14 @@ end
 ------
 -- BIF:Show
 ------
-function BIF:Show(self)
-    if not self:IsShowing(self) and self:ShouldShow(self) and self:IsEnabled(self) then
+function BIF:Show()
+    if not self:IsShowing() and self:ShouldShow() and self:IsEnabled() then
         self.icon:Show()
+        self.icon.border:Show()
+        self.icon.cdtext:SetAlpha(1)
+        if self.icon.drtext then
+            self.icon.drtext:SetAlpha(1)
+        end
         self.showing = true
     end
 end
@@ -114,9 +122,10 @@ end
 ------
 -- BIF:Hide
 ------
-function BIF:Hide(self, force)
-    if force or (BIF:IsShowing(self) and not BIF:ShouldShow(self)) then
+function BIF:Hide(force)
+    if force or (self:IsShowing() and not self:ShouldShow()) then
         self.icon:Hide()
+        self.icon.border:Hide()
         self.icon:ClearAllPoints()
         self.showing = nil
     end
@@ -125,11 +134,11 @@ end
 ------
 -- BIF:Reset
 ------
-function BIF:Reset(self, force)
+function BIF:Reset(force)
     self.active = nil
 
     self.icon:UnregisterAllEvents()
-    BIF:Hide(self, force)
+    self:Hide(force)
 
     self.icon.cdtext:SetAlpha(0)
     if self.icon.drtext then
@@ -138,16 +147,18 @@ function BIF:Reset(self, force)
     end
     self.icon.reset = 0
     self.icon.timeLeft = 0
+    self.icon.showingBorder = false
+    self.icon.border:SetBackdropBorderColor(1, 0, 0, 0)
 end
 
 ------
 -- BIF:Release
 ------
-function BIF:Release(self)
-    BIF:Reset(self, true)
+function BIF:Release()
+    self:Reset(true)
     self.icon.cooldown:UnregisterAllEvents()
-    self.icon.cooldownMark:Hide()
-    self.icon.cooldownMark = nil
+    self.icon.cooldown.cooldownMark:Hide()
+    self.icon.cooldown.cooldownMark = nil
     self.icon.cooldown = nil
 
     self.icon.texture = nil
@@ -158,25 +169,25 @@ end
 ------
 -- BIF:UpdatePosition
 ------
-function BIF:UpdatePosition(self, info)
+function BIF:UpdatePosition(info)
     self.enabled = info.enabled
-    print(info.prefix)
-    print(info.anchor)
-    print(info.paddingX)
 
-    if side == "LEFT" then
-        self.icon:SetPoint(info.prefix.."RIGHT", info.anchor, info.prefix.."LEFT", -1 * info.paddingX, info.paddingY)
-    else
-        self.icon:SetPoint(info.prefix.."LEFT", info.anchor, info.prefix.."RIGHT", info.paddingX, info.paddingY)
+    if info.anchor and info.anchor ~= self.icon then
+        self.icon:ClearAllPoints()
+        if info.position == "LEFT" then
+            self.icon:SetPoint(info.prefix.."RIGHT", info.anchor, info.prefix.."LEFT", -1 * info.paddingX, info.paddingY)
+        else
+            self.icon:SetPoint(info.prefix.."LEFT", info.anchor, info.prefix.."RIGHT", info.paddingX, info.paddingY)
+        end
     end
 
-    BIF:Show(self)
+    self:Show()
 end
 
 ------
 -- BIF:UpdateIconSize
 ------
-function BIF:UpdateIconSettings(self, size, fontSize, drFontSize)
+function BIF:UpdateIconSettings(size, fontSize, drFontSize)
     self.icon:SetWidth(self.parent:GetHeight()*size)
     self.icon:SetHeight(self.parent:GetHeight()*size)
     self.icon.cooldown:SetAllPoints(self.icon)
@@ -191,7 +202,7 @@ end
 ------
 -- BIF:SetSize
 ------
-function BIF:SetSize(self, size)
+function BIF:SetSize(size)
     self.size = size
     if self.icon then
         icon:SetWidth(size)
@@ -202,7 +213,7 @@ end
 ------
 -- BIF:SetTexture
 ------
-function BIF:SetTexture(self, spellID)
+function BIF:SetTexture(spellID)
     local _, _, texture = GetSpellInfo(spellID)
 
     self.texture = texture
@@ -215,7 +226,7 @@ end
 ------
 -- BIF:SetTextureString
 ------
-function BIF:SetTextureOverride(self, string)
+function BIF:SetTextureOverride(string)
     self.texture = string
 
     if self.icon then
@@ -227,35 +238,35 @@ end
 ------
 -- BIF:IsEnabled
 ------
-function BIF:IsEnabled(self)
-    return BIF:CheckBoolean(self, "enabled")
+function BIF:IsEnabled()
+    return self:CheckBoolean("enabled")
 end
 
 ------
 -- BIF:IsShowing
 ------
-function BIF:IsShowing(self)
-    return BIF:CheckBoolean(self, "showing")
+function BIF:IsShowing()
+    return self:CheckBoolean("showing")
 end
 
 ------
 -- BIF:IsActive
 ------
-function BIF:IsActive(self)
-    return BIF:CheckBoolean(self, "active")
+function BIF:IsActive()
+    return self:CheckBoolean("active")
 end
 
 ------
 -- BIF:IsPriority
 ------
-function BIF:IsPriority(self)
-    return BIF:CheckBoolean(self, "priority")
+function BIF:IsPriority()
+    return self:CheckBoolean("priority")
 end
 
 ------
 -- BIF:CheckBoolean
 ------
-function BIF:CheckBoolean(self, name)
+function BIF:CheckBoolean(name)
     if self[name] and self[name] == true then
         return true
     end
@@ -265,8 +276,8 @@ end
 ------
 -- BIF:ShouldShow
 ------
-function BIF:ShouldShow(self)
-    return BIF:IsActive(self) or BIF:IsPriority(self)
+function BIF:ShouldShow()
+    return self:IsActive() or self:IsPriority()
 end
 
 
@@ -277,20 +288,20 @@ end
 ------
 function BIF:CooldownDone(cd)
     local self = cd:GetParent().iconFrame
-    BIF:Reset(self)
+    self:Reset()
     self.unitFrame:UpdateIcons(self.unitFrame)
 end
 
 ------
 -- BIF:CreateCooldown
 ------
-function BIF:CreateCooldown(self)
-    local cooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
-    cooldown:SetAllPoints(self)
+function BIF:CreateCooldown(icon)
+    local cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+    cooldown:SetAllPoints()
     cooldown:SetReverse(true)
     cooldown:SetSwipeColor(0, 0, 0, 0.5)
     cooldown:SetScript("OnCooldownDone", function(cd)
-        BIF:CooldownDone(cd)
+        self:CooldownDone(cd)
     end)
 
     cooldown.cooldownMark = CreateFrame("Cooldown", nil, cooldown)
@@ -306,10 +317,47 @@ end
 -- BIF:UpdateCooldown
 ------
 function BIF:UpdateCooldown(icon, elapsed)
-    if GetTime() < icon.reset and icon.timeLeft > 0 and icon.active == true then
+    if GetTime() < icon.reset and icon.timeLeft > 0 and icon.iconFrame.active == true then
         icon.timeLeft = icon.timeLeft - elapsed
-        BIF:SetFormattedNumber(icon.cdtext, icon.timeLeft)
+        self:SetFormattedNumber(icon.cdtext, icon.timeLeft)
+
+        if icon.duration - icon.timeLeft < 3 then
+            if not icon.showingBorder then
+                icon.border:SetBackdropBorderColor(1, 0, 0, .65)
+                icon.showingBorder = true
+            end
+        elseif icon.showingBorder then
+            icon.border:SetBackdropBorderColor(1, 0, 0, 0)
+            icon.showingBorder = nil
+        end
     end
+end
+
+------
+-- BIF:CreateBorder
+------
+function BIF:CreateBorder(icon)
+    local border = CreateFrame("Frame", nil, icon)
+
+    border:SetBackdrop({
+      edgeFile = "Interface\\ChatFrame\\ChatFrameBackground",
+      edgeSize = 5,
+      bgFile = nil,
+      insets = {
+        left = 5,
+        right = 5,
+        top = 5,
+        bottom = 5,
+      },
+    });
+    border:SetAllPoints(icon)
+    border:SetPoint("BOTTOMLEFT", icon, "BOTTOMLEFT", -1, -1);
+    border:SetPoint("TOPRIGHT", icon, "TOPRIGHT", 1, 1);
+    border:SetBackdropBorderColor(1, 0, 0, 0);
+    border:SetBackdropColor(0, 0, 0, 0);
+    border:SetFrameLevel(icon:GetFrameLevel()+2)
+
+    return border
 end
 
 ------

@@ -52,7 +52,7 @@ function BCH:ParseCDEvent(sourceGUID, sourceName, sourceFlags, destGUID, destNam
         elseif OmniBar.cooldowns[spellID] then
             if (OmniBar_IsSpellEnabled(self, spellID)) then
                 BONK:Print("Dispatching "..spellID)
-                self:DispatchCast(sourceGUID, "spells", spellID, nil, nil)
+                self:DispatchCast(sourceGUID, "spells", spellID)
             end
         end
     end
@@ -67,7 +67,7 @@ function BCH:ParseDREvent(sourceGUID, sourceName, sourceFlags, destGUID, destNam
         if drCat then
             if self:IsHostile(sourceFlags) then
                 local duration = DRData:GetResetTime()
-                self:DispatchCast(destGUID, "drs", spellID, start, duration, drCat)
+                self:DispatchCast(destGUID, "drs", spellID, duration, drCat)
             end
         end
     end
@@ -90,7 +90,7 @@ function BCH:DispatchCast(targetGUID, type, spellID, duration, category)
 
     print(duration)
 
-    target:HandleCast(target, type, spellID, startTime, duration, category)
+    target:HandleCast(type, spellID, startTime, duration, category)
 end
 
 ------

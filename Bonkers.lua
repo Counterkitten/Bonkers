@@ -56,8 +56,7 @@ _G[addonName] = addonTable;
 --Function we can call when a setting changes.
 --In this case it just checks if "SomeToggleOption" is enabled. If it is it prints the value of "SomeRangeOption", otherwise it tells you that "SomeToggleOption" is disabled.
 function BONK:Update()
-	BUF:Update_PositionSettings()
-    BUF:Update_IconSettings()
+	BONK.BFM:RefreshSettings()
 end
 
 --This function inserts our GUI table into the ElvUI Config. You can read about AceConfig here: http://www.wowace.com/addons/ace3/pages/ace-config-3-0-options-tables/
@@ -210,7 +209,7 @@ function BONK:InsertOptions()
                         type = "execute",
                         name = "Display Test Icons",
                         func = function()
-                            BONK.BUF:ShowTestIcons()
+                            BONK.BFM:ShowTestIcons()
                         end,
                     },
                     HideIcons = {
@@ -218,11 +217,11 @@ function BONK:InsertOptions()
                         type = "execute",
                         name = "Hide Test Icons",
                         func = function()
-                            BONK.BUF:HideTestIcons()
+                            BONK.BFM:HideTestIcons()
                         end,
                     },
                     Debug = {
-                        order = 17,
+                        order = 18,
                         type = "toggle",
                         name = "Debug Mode",
                         desc = "Print debug message",

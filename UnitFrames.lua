@@ -15,7 +15,7 @@ BUF.__index = BUF
 ------
 -- BONK:NewFrame
 ------
-function BONK:NewFrame(hostile)
+function BONK.NewFrame(hostile)
     BONK:Print("New Unit Frame")
     local self = setmetatable({}, BUF)
 
@@ -34,17 +34,17 @@ end
 ------
 -- BUF:AssignFrame
 ------
-function BUF:AssignFrame(self, parent)
+function BUF:AssignFrame(parent)
     self.parent = parent
     self.GUID = UnitGUID(parent.unit)
 
-    local trinket = BONK:NewIconFrame(208683, self, E.db.BONK.Trinket.IconSize, E.db.BONK.Trinket.TimerFontSize, nil, true)
+    local trinket = BONK.NewIconFrame(208683, self, E.db.BONK.Trinket.IconSize, E.db.BONK.Trinket.TimerFontSize, nil, true)
     trinket:SetTextureOverride(trinket, "Interface\\Icons\\INV_Jewelry_Necklace_37")
 
     self.trinket = trinket
 
     if self.hostile == true then
-
+        self.specID = GetArenaOpponentSpec(parent.unit[6])
     else
         if parent.unit == "player" then
             self.specID = GetSpecialization()
@@ -52,24 +52,26 @@ function BUF:AssignFrame(self, parent)
             self.specID = GetInspectSpecialization(parent.unit)
         end
     end
+    BONK:Print("Spec "..self.specID)
 
-    self:UpdateIcons(self)
+    self:UpdateIcons()
 end
 
 ------
 -- BUF:MakeNewIcon
 ------
-function BUF:MakeNewIcon(self, type, iconID)
+function BUF:MakeNewIcon(type, iconID)
     local size = E.db.BONK.CD.IconSize
     local fontSize = E.db.BONK.CD.TimerFontSize
     local drFontSize = nil
 
-    if type == "DR" then
+    if type == "drs" then
         size = E.db.BONK.DR.IconSize
         fontSize = E.db.BONK.DR.TimerFontSize
         drFontSize = E.db.BONK.DR.DRFontSize
     end
-    icon = BONK:NewIconFrame(iconID, self, size, fontSize, drFontSize, false)
+    local icon = BONK.NewIconFrame(iconID, self, size, fontSize, drFontSize, false)
+    print(icon)
 
     return icon
 end
@@ -77,7 +79,7 @@ end
 ------
 -- BUF:HandleCast
 ------
-function BUF:HandleCast(self, type, spellID, startTime, duration, category)
+function BUF:HandleCast(type, spellID, startTime, duration, category)
     local icon = nil
     local skip = nil
 
@@ -85,35 +87,43 @@ function BUF:HandleCast(self, type, spellID, startTime, duration, category)
         icon = self.trinket
         skip = true
     else
-        icon = self[type][spellID]
+        print(type)
+        print(self[type])
+        icon = self[type][category or spellID]
         if not icon then
-            icon = BUF:MakeNewIcon(self, type, category or spellID)
+            icon = self:MakeNewIcon(type, category or spellID)
             self[type][category or spellID] = icon
         end
     end
+    print(icon)
     if not icon then return end
 
-    if not skip and not icon:IsActive(icon) then
+    if not skip and not icon:IsActive() then
         if OmniBar.cooldowns[spellID] and OmniBar.cooldowns[spellID].default then
             table.insert(self.active[type], 1, icon)
         else
             table.insert(self.active[type], icon)
+            if #self.active.drs then
+            end
         end
     end
 
-    icon:BeginCooldown(icon, spellID, startTime, duration, category)
-    self:UpdateIcons(self)
+    print("beginning")
+    icon:BeginCooldown(spellID, startTime, duration, category)
+    self:UpdateIcons()
 end
 
 ------
 -- BUF:Release
 ------
-function BUF:Release(self)
-    for _,type in pairs(BUF:GetOrder(true)) do
-        self:ReleaseIcons(self, type)
+function BUF:Release()
+    for _,type in pairs(self:GetOrder(true)) do
+        self:ReleaseIcons(type)
     end
 
-    self.trinket:Release(self.trinket)
+    if self.trinket then
+        self.trinket:Release(self.trinket)
+    end
     self.trinket = nil
     self.GUID = nil
     self.parent = nil
@@ -122,16 +132,16 @@ end
 ------
 -- BUF:ReleaseIcons
 ------
-function BUF:ReleaseIcons(self, type)
+function BUF:ReleaseIcons(type)
     for i = #self.active[type], 1, -1 do
         local icon = self.active[type][i]
-        icon:Release(icon)
+        icon:Release()
         self[type][icon.iconID] = nil
     end
 
     for _, icon in pairs(self[type]) do
         if icon then
-            icon:Release(icon)
+            icon:Release()
         end
     end
     self[type] = {}
@@ -141,14 +151,15 @@ end
 ------
 -- BUF:UpdateIcons
 ------
-function BUF:UpdateIcons(self)
-    self:UpdateIconPosition(self, self.trinket, "trinket", 0)
+function BUF:UpdateIcons()
+    self:UpdateIconPosition(self.trinket, "trinket", 0)
     BONK:Print("Updating")
 
     for _,type in pairs(self:GetOrder()) do
-        self:CheckActiveIcons(self, type)
+        self:CheckActiveIcons(type)
         for i = 1, #self.active[type], 1 do
-            self:UpdateIconPosition(self, icon, type, i)
+            local icon = self.active[type][i]
+            self:UpdateIconPosition(icon, type, i)
         end
     end
 end
@@ -156,11 +167,11 @@ end
 ------
 -- BUF:CheckActiveIcons
 ------
-function BUF:CheckActiveIcons(self, type)
+function BUF:CheckActiveIcons(type)
     local remove = {}
 
     for _,icon in pairs(self.active[type]) do
-        if not icon:IsActive(icon) then
+        if not icon:IsActive() then
             remove[icon.iconID] = true
         end
     end
@@ -175,9 +186,9 @@ end
 ------
 -- BUF:UpdateIconPosition
 ------
-function BUF:UpdateIconPosition(self, icon, type, j)
-    local info = BUF:GetPositionInfo(self, icon, type, j)
-    icon:UpdatePosition(icon, info)
+function BUF:UpdateIconPosition(icon, type, j)
+    local info = self:GetPositionInfo(icon, type, j)
+    icon:UpdatePosition(info)
 end
 
 ------
@@ -185,7 +196,7 @@ end
 --
 -- A total mess, need to refactor
 ------
-function BUF:GetPositionInfo(self, icon, type, j)
+function BUF:GetPositionInfo(icon, type, j)
     local info = {}
 
     local ldb = nil
@@ -229,7 +240,7 @@ function BUF:GetPositionInfo(self, icon, type, j)
                         op = 1
                         info.prefix = "BOTTOM"
                     end
-                    local heightDiff = (self.parent:GetHeight()/2) - icon:GetHeight()
+                    local heightDiff = (self.parent:GetHeight()/2) - icon.icon:GetHeight()
                     paddingY = op * (heightDiff - E.db.BONK.General.SeparatorY)
                 elseif type ~= E.db.BONK.General.Order and otherActive == true then
                     info.anchor = self.active[other][#self.active[other]].icon
@@ -264,7 +275,7 @@ end
 ------
 -- BUF:IsAssigned
 ------
-function BUF:IsAssigned(self)
+function BUF:IsAssigned()
     if self.parent and self.GUID then
         return true
     end
