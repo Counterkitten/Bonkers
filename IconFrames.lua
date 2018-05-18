@@ -20,7 +20,6 @@ BIF.__index = BIF
 function BONK.NewIconFrame(iconID, unitFrame, size, fontSize, drFontSize, priority)
     BONK:Print("New Icon Frame")
     local self = setmetatable({}, BIF)
-    self.active = false
     self.iconID = iconID
     self.unitFrame = unitFrame
     self.parent = unitFrame.parent
@@ -40,7 +39,7 @@ end
 -- BIF:ConstructIcon
 ------
 function BIF:ConstructIcon(iconID)
-    local icon = CreateFrame('Button', self.parent:GetName()..iconID, self.parent, "ActionButtonTemplate")
+    local icon = CreateFrame('Button', self.parent:GetName()..iconID, self.parent, "UIPanelButtonTemplate")
     icon.iconFrame = self
 
     icon.spacing = E.Spacing
@@ -52,6 +51,8 @@ function BIF:ConstructIcon(iconID)
     icon:SetNormalTexture(nil)
     icon.texture = self:CreateTexture(icon)
     icon.cooldown = self:CreateCooldown(icon)
+    icon.cooldownMark = self:CreateCooldown(icon, true)
+    icon.cooldownMark.max = 0
     icon.border = self:CreateBorder(icon)
 
     icon.cdtext = self:CreateText(icon, self.fontSize)
@@ -69,22 +70,39 @@ function BIF:ConstructIcon(iconID)
 end
 
 ------
+-- BIF:SetParent
+------
+function BIF:SetParent(parent)
+    self.parent = parent
+    self.icon:SetParent(parent)
+end
+
+------
 -- BIF:BeginCooldown
 ------
 function BIF:BeginCooldown(spellID, startTime, duration, category)
-    print("Begin")
+    if self.active then
+        if startTime - self.icon.startTime < 1 then return end
+
+        if not self.icon.drtext then
+            self:UpdateCooldownMark(self.icon.timeLeft, self.icon.duration)
+        end
+    end
     self.icon:UnregisterAllEvents()
 
     self.active = true
+    self.icon.startTime = startTime
     self.icon.duration = duration
-    self.icon.timeLeft = duration
+    self.icon.timeLeft = duration;
+
+    self.icon.border.alpha = 1
 
     self.icon.cdtext:SetAlpha(1)
     if self.icon.drtext then
         if not self.icon.reset or self.icon.reset <= startTime then
             self.icon.diminished = 1
         else
-            self.icon.diminished = DRData:NextDR(icon.diminished, category)
+            self.icon.diminished = DRData:NextDR(self.icon.diminished, category)
         end
         local text, r, g, b = unpack(drTexts[self.icon.diminished])
         self.icon.drtext:SetText(text)
@@ -157,9 +175,8 @@ end
 function BIF:Release()
     self:Reset(true)
     self.icon.cooldown:UnregisterAllEvents()
-    self.icon.cooldown.cooldownMark:Hide()
-    self.icon.cooldown.cooldownMark = nil
     self.icon.cooldown = nil
+    self.icon.cooldownMark = nil
 
     self.icon.texture = nil
     self.icon.cdtext = nil
@@ -231,7 +248,7 @@ function BIF:SetTextureOverride(string)
 
     if self.icon then
         self.icon.texture:SetTexture(string)
-        self.icon.textureOverride = true
+        self.textureOverride = true
     end
 end
 
@@ -295,20 +312,21 @@ end
 ------
 -- BIF:CreateCooldown
 ------
-function BIF:CreateCooldown(icon)
-    local cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+function BIF:CreateCooldown(icon, isMark)
+    local cooldown = nil
+    if isMark then
+        cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+        cooldown:SetSwipeColor(1, 0, 0, 0.3)
+        cooldown:SetSwipeTexture("Interface\\ChatFrame\\ChatFrameBackground")
+    else
+        cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+        cooldown:SetSwipeColor(0, 0, 0, 0.5)
+        cooldown:SetReverse(true)
+    end
     cooldown:SetAllPoints()
-    cooldown:SetReverse(true)
-    cooldown:SetSwipeColor(0, 0, 0, 0.5)
     cooldown:SetScript("OnCooldownDone", function(cd)
         self:CooldownDone(cd)
     end)
-
-    cooldown.cooldownMark = CreateFrame("Cooldown", nil, cooldown)
-    cooldown.cooldownMark:SetAllPoints(cooldown)
-    cooldown.cooldownMark:SetReverse(true)
-    cooldown.cooldownMark:SetSwipeColor(1, 0, 0, 0.5)
-    cooldown.cooldownMark:Hide()
 
     return cooldown
 end
@@ -321,16 +339,26 @@ function BIF:UpdateCooldown(icon, elapsed)
         icon.timeLeft = icon.timeLeft - elapsed
         self:SetFormattedNumber(icon.cdtext, icon.timeLeft)
 
-        if icon.duration - icon.timeLeft < 3 then
-            if not icon.showingBorder then
-                icon.border:SetBackdropBorderColor(1, 0, 0, .65)
-                icon.showingBorder = true
-            end
-        elseif icon.showingBorder then
-            icon.border:SetBackdropBorderColor(1, 0, 0, 0)
-            icon.showingBorder = nil
+        if icon.border.alpha > 0 then
+            icon.border.alpha = icon.border.alpha - 0.005
+            icon.border:SetBackdropBorderColor(1, 0, 0, icon.border.alpha)
         end
     end
+end
+
+------
+-- BIF:UpdateCooldownMark
+------
+function BIF:UpdateCooldownMark(timeLeft, duration)
+    local mark = self.icon.cooldownMark
+
+    if timeLeft > mark.max then
+        mark.max = timeLeft
+    end
+    local div = mark.max / duration
+
+    mark:SetCooldown(GetTime()-(1000-(div*1000)), 1000)
+    mark:Show()
 end
 
 ------

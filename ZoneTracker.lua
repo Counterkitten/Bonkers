@@ -12,7 +12,7 @@ function BZT:Initialize()
     BONK:Print("BZT Initializing")
     self.instanceType = "none"
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA")
+    self:RegisterEvent("ADDON_LOADED", "ZONE_CHANGED_NEW_AREA")
 end
 
 ------
@@ -27,10 +27,17 @@ function BZT:InArena()
 end
 
 ------
+-- BZT:DisableDebug
+------
+function BZT:ToggleDebug()
+    self:ZONE_CHANGED_NEW_AREA("DEBUG")
+end
+
+------
 -- BZT:ZONE_CHANGED_NEW_AREA
 ------
-function BZT:ZONE_CHANGED_NEW_AREA()
-    BONK:Print("Changing Zone")
+function BZT:ZONE_CHANGED_NEW_AREA(event)
+    BONK:Print(event)
     local _, instanceType = IsInInstance()
 
     if self:InArena() == true then

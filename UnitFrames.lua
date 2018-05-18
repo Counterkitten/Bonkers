@@ -16,7 +16,6 @@ BUF.__index = BUF
 -- BONK:NewFrame
 ------
 function BONK.NewFrame(hostile)
-    BONK:Print("New Unit Frame")
     local self = setmetatable({}, BUF)
 
     self.hostile = hostile
@@ -34,12 +33,13 @@ end
 ------
 -- BUF:AssignFrame
 ------
-function BUF:AssignFrame(parent)
+function BUF:AssignFrame(parent, GUID)
     self.parent = parent
-    self.GUID = UnitGUID(parent.unit)
+    self.GUID = GUID
+    BONK:Print("Assigning", self.GUID)
 
     local trinket = BONK.NewIconFrame(208683, self, E.db.BONK.Trinket.IconSize, E.db.BONK.Trinket.TimerFontSize, nil, true)
-    trinket:SetTextureOverride(trinket, "Interface\\Icons\\INV_Jewelry_Necklace_37")
+    trinket:SetTextureOverride("Interface\\Icons\\INV_Jewelry_Necklace_37")
 
     self.trinket = trinket
 
@@ -58,6 +58,14 @@ function BUF:AssignFrame(parent)
 end
 
 ------
+-- BUF:UpdateParent
+------
+function BUF:UpdateParent(parent)
+    self.parent = parent
+    self:UpdateIcons()
+end
+
+------
 -- BUF:MakeNewIcon
 ------
 function BUF:MakeNewIcon(type, iconID)
@@ -71,7 +79,6 @@ function BUF:MakeNewIcon(type, iconID)
         drFontSize = E.db.BONK.DR.DRFontSize
     end
     local icon = BONK.NewIconFrame(iconID, self, size, fontSize, drFontSize, false)
-    print(icon)
 
     return icon
 end
@@ -87,15 +94,12 @@ function BUF:HandleCast(type, spellID, startTime, duration, category)
         icon = self.trinket
         skip = true
     else
-        print(type)
-        print(self[type])
         icon = self[type][category or spellID]
         if not icon then
             icon = self:MakeNewIcon(type, category or spellID)
             self[type][category or spellID] = icon
         end
     end
-    print(icon)
     if not icon then return end
 
     if not skip and not icon:IsActive() then
@@ -108,8 +112,7 @@ function BUF:HandleCast(type, spellID, startTime, duration, category)
         end
     end
 
-    print("beginning")
-    icon:BeginCooldown(spellID, startTime, duration, category)
+    icon:BeginCooldown(spellID, startTime, duration+10, category)
     self:UpdateIcons()
 end
 
@@ -117,6 +120,7 @@ end
 -- BUF:Release
 ------
 function BUF:Release()
+    BONK:Print("Releasing")
     for _,type in pairs(self:GetOrder(true)) do
         self:ReleaseIcons(type)
     end
@@ -153,7 +157,6 @@ end
 ------
 function BUF:UpdateIcons()
     self:UpdateIconPosition(self.trinket, "trinket", 0)
-    BONK:Print("Updating")
 
     for _,type in pairs(self:GetOrder()) do
         self:CheckActiveIcons(type)
@@ -187,6 +190,10 @@ end
 -- BUF:UpdateIconPosition
 ------
 function BUF:UpdateIconPosition(icon, type, j)
+    if icon.parent ~= self.parent then
+        icon:SetParent(self.parent)
+    end
+
     local info = self:GetPositionInfo(icon, type, j)
     icon:UpdatePosition(info)
 end

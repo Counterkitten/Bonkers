@@ -35,12 +35,15 @@ end
 -- BFM:Start
 ------
 function BFM:Start()
-    self.running = true
-    self:RegisterEvent("GROUP_ROSTER_UPDATE")
-    -- self:RegisterEvent("ARENA_OPPONENT_UPDATE")
-    -- self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS", "ARENA_OPPONENT_UPDATE")
+    if self.running == false then
+        BONK:Print("Starting BFM")
+        self.running = true
+        self:RegisterEvent("GROUP_ROSTER_UPDATE")
+        self:RegisterEvent("UNIT_NAME_UPDATE", "GROUP_ROSTER_UPDATE")
+        self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS", "GROUP_ROSTER_UPDATE")
 
-    self:AssignPartyFrames()
+        self:AssignPartyFrames()
+    end
 end
 
 ------
@@ -58,7 +61,7 @@ end
 function BFM:AssignPartyFrames()
     for i = 1, self:GroupSize(), 1 do
         local uf = UF.headers.party.groups[1][i]
-        self:AssignGroupFrame(uf, self.party, i)
+        self:AssignGroupFrame(uf, self.party)
     end
 end
 
@@ -66,33 +69,34 @@ end
 -- BFM:AssignArenaFrames
 ------
 function BFM:AssignArenaFrames()
-
+    for unit, group in pairs(UF.groupunits) do
+        BONK:Print(unit)
+        BONK:Print(group)
+    end
 end
 
 ------
 -- BFM:AssignFrame
 ------
-function BFM:AssignGroupFrame(unitFrame, group, i)
+function BFM:AssignGroupFrame(unitFrame, group)
     if not unitFrame or not unitFrame.unit then return end
 
     local GUID = UnitGUID(unitFrame.unit)
-    if not GUID or self.map[GUID] then return end
+    if not GUID then return end
 
-    local frame = group[i]
-    if frame:IsAssigned() then
-        frame = BFM:FindFreeFrame(group)
-
+    if self.map[GUID] then
+        self.map[GUID]:UpdateParent(unitFrame)
+    else
+        local frame = self:FindFreeFrame(group)
         if not frame then
-            E:Print("No frame found, resetting")
             self:ReleaseAllFrames()
             self:AssignPartyFrames()
-            self:AssignArenaFrames()
-            return
+            --self:AssignArenaFrames()
         end
-    end
 
-    frame:AssignFrame(unitFrame, hostile)
-    self.map[GUID] = frame
+        frame:AssignFrame(unitFrame, GUID)
+        self.map[GUID] = frame
+    end
 end
 
 ------
@@ -101,7 +105,7 @@ end
 function BFM:FindFreeFrame(group)
     local found = nil
     for i = 1, 5, 1 do
-        if group[i]:IsAssigned() then
+        if not group[i]:IsAssigned() then
             found = group[i]
             break
         end
@@ -158,7 +162,7 @@ function BFM:ShowTestIcons()
         frame:HandleCast("trinket", 208683, GetTime(), 600)
         frame:HandleCast("spells", 136, GetTime(), 600)
         frame:HandleCast("spells", 79140, GetTime(), 600)
-        --frame:HandleCast("drs", 33786, GetTime(), 600, "disorient")
+        frame:HandleCast("drs", 33786, GetTime(), 600, "disorient")
         frame:HandleCast("drs", 3355, GetTime(), 600, "incapacitate")
     end
 end
@@ -173,13 +177,8 @@ end
 ------
 -- BFM:GROUP_ROSTER_UPDATE
 ------
-function BFM:GROUP_ROSTER_UPDATE()
-    self:AssignPartyFrames()
-end
-
-------
--- BFM:ARENA_OPPONENT_UPDATE
-------
-function BFM:ARENA_OPPONENT_UPDATE()
+function BFM:GROUP_ROSTER_UPDATE(event, a)
+    BONK:Print(event)
+    BONK:Print(a)
     self:AssignPartyFrames()
 end

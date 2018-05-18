@@ -230,6 +230,7 @@ function BONK:InsertOptions()
                         end,
                         set = function(info, value)
                             E.db.BONK.General.Debug = value
+                            BONK.BZT:ToggleDebug()
                         end,
                     },
                 },
@@ -474,7 +475,7 @@ function BONK:InsertOptions()
 end
 
 function BONK:Print(message)
-    if E.db.BONK.General.Debug and E.db.BONK.General.Debug == true then
+    if E.db.BONK and E.db.BONK.General.Debug and E.db.BONK.General.Debug == true then
         print(message)
     end
 end
