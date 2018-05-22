@@ -6,7 +6,6 @@ local CreateFrame = CreateFrame
 -- BONK:NewEventHandler
 ------
 function BONK:NewEventHandler()
-    BONK:Print("New EV")
     local ns = {}
     ns.handler = CreateFrame("Frame")
     ns.handler.events = {}

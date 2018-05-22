@@ -18,6 +18,12 @@ BUF.__index = BUF
 function BONK.NewFrame(hostile)
     local self = setmetatable({}, BUF)
 
+    if hostile then
+        self.db = E.db.BONK.Arena
+    else
+        self.db = E.db.BONK.Party
+    end
+
     self.hostile = hostile
     self.parent = nil
     self.GUID = nil
@@ -38,21 +44,25 @@ function BUF:AssignFrame(parent, GUID)
     self.GUID = GUID
     BONK:Print("Assigning", self.GUID)
 
-    local trinket = BONK.NewIconFrame(208683, self, E.db.BONK.Trinket.IconSize, E.db.BONK.Trinket.TimerFontSize, nil, true)
-    trinket:SetTextureOverride("Interface\\Icons\\INV_Jewelry_Necklace_37")
+    if not self.hostile then
+        if self:TypeEnabled("trinket") then
+            local trinket = BONK.NewIconFrame(208683, self, self.db.Trinket.IconSize, self.db.Trinket.TimerFontSize, nil, true)
+            trinket:SetTextureOverride("Interface\\Icons\\INV_Jewelry_Necklace_37")
+            self.trinket = trinket
+        end
 
-    self.trinket = trinket
-
-    if self.hostile == true then
-        self.specID = GetArenaOpponentSpec(parent.unit[6])
-    else
         if parent.unit == "player" then
             self.specID = GetSpecialization()
         else
             self.specID = GetInspectSpecialization(parent.unit)
         end
+    else
+        self.specID = GetArenaOpponentSpec(string.sub(parent.unit, 6, 6))
     end
-    BONK:Print("Spec "..self.specID)
+
+    if self.specID then
+        BONK:Print("Spec "..self.specID)
+    end
 
     self:UpdateIcons()
 end
@@ -69,14 +79,14 @@ end
 -- BUF:MakeNewIcon
 ------
 function BUF:MakeNewIcon(type, iconID)
-    local size = E.db.BONK.CD.IconSize
-    local fontSize = E.db.BONK.CD.TimerFontSize
+    local size = self.db.CD.IconSize
+    local fontSize = self.db.CD.TimerFontSize
     local drFontSize = nil
 
     if type == "drs" then
-        size = E.db.BONK.DR.IconSize
-        fontSize = E.db.BONK.DR.TimerFontSize
-        drFontSize = E.db.BONK.DR.DRFontSize
+        size = self.db.DR.IconSize
+        fontSize = self.db.DR.TimerFontSize
+        drFontSize = self.db.DR.DRFontSize
     end
     local icon = BONK.NewIconFrame(iconID, self, size, fontSize, drFontSize, false)
 
@@ -90,7 +100,10 @@ function BUF:HandleCast(type, spellID, startTime, duration, category)
     local icon = nil
     local skip = nil
 
+    if not self:TypeEnabled(type) then return end
+
     if type == "trinket" then
+        if not self.trinket then return end
         icon = self.trinket
         skip = true
     else
@@ -156,7 +169,9 @@ end
 -- BUF:UpdateIcons
 ------
 function BUF:UpdateIcons()
-    self:UpdateIconPosition(self.trinket, "trinket", 0)
+    if self.trinket then
+        self:UpdateIconPosition(self.trinket, "trinket", 0)
+    end
 
     for _,type in pairs(self:GetOrder()) do
         self:CheckActiveIcons(type)
@@ -212,17 +227,17 @@ function BUF:GetPositionInfo(icon, type, j)
     local otherPaddingX = 0
 
     if type == "trinket" then
-        ldb = E.db.BONK.Trinket
+        ldb = self.db.Trinket
     elseif type == "spells" then
-        ldb = E.db.BONK.CD
+        ldb = self.db.CD
         other = "drs"
         otherActive = #self.active.drs > 0
-        otherPaddingX = E.db.BONK.DR.PaddingX
+        otherPaddingX = self.db.DR.PaddingX
     elseif type == "drs" then
-        ldb = E.db.BONK.DR
+        ldb = self.db.DR
         other = "spells"
         otherActive = #self.active.spells > 0
-        otherPaddingX = E.db.BONK.CD.PaddingX
+        otherPaddingX = self.db.CD.PaddingX
     else
         return
     end
@@ -236,20 +251,11 @@ function BUF:GetPositionInfo(icon, type, j)
 
     if other then
         if j == 1 then
-            if ldb.Position == E.db.BONK.Trinket.Position then
+            if ldb.Position == self.db.Trinket.Position and self.trinket then
                 info.anchor = self.trinket.icon
             end
-            if E.db.BONK.CD.Position == E.db.BONK.DR.Position then
-                if E.db.BONK.General.Stack == true then
-                    info.stack = true
-                    local op = -1
-                    if type ~= E.db.BONK.General.Order then
-                        op = 1
-                        info.prefix = "BOTTOM"
-                    end
-                    local heightDiff = (self.parent:GetHeight()/2) - icon.icon:GetHeight()
-                    paddingY = op * (heightDiff - E.db.BONK.General.SeparatorY)
-                elseif type ~= E.db.BONK.General.Order and otherActive == true then
+            if self.db.CD.Position == self.db.DR.Position then
+                if type ~= self.db.General.Order and otherActive == true then
                     info.anchor = self.active[other][#self.active[other]].icon
                     info.paddingX = info.paddingX + otherPaddingX
                 end
@@ -265,11 +271,30 @@ function BUF:GetPositionInfo(icon, type, j)
 end
 
 ------
+-- BUF:RefreshSettings
+------
+function BUF:RefreshSettings()
+    if self.trinket then
+        self.trinket:UpdateSettings(self.db.Trinket.IconSize, self.db.Trinket.TimerFontSize)
+    end
+
+    for _,icon in pairs(self.spells) do
+        icon:UpdateSettings(self.db.CD.IconSize, self.db.CD.TimerFontSize)
+    end
+
+    for _,icon in pairs(self.drs) do
+        icon:UpdateSettings(self.db.DR.IconSize, self.db.DR.TimerFontSize, self.db.DR.DRFontSize)
+    end
+
+    self:UpdateIcons()
+end
+
+------
 -- BUF:GetOrder
 ------
 function BUF:GetOrder(reverse)
     local order = {}
-    if (E.db.BONK.General.Order == "spells" and reverse ~= true) or (E.db.BONK.General.Order == "drs" and reverse == true) then
+    if (self.db.General.Order == "spells" and reverse ~= true) or (self.db.General.Order == "drs" and reverse == true) then
         order[0] = "spells"
         order[1] = "drs"
     else
@@ -287,4 +312,18 @@ function BUF:IsAssigned()
         return true
     end
     return nil
+end
+
+------
+-- BUF:TypeEnabled
+------
+function BUF:TypeEnabled(type)
+    if type == "trinket" then
+        return self.db.Trinket.Enabled
+    elseif type == "spells" then
+        return self.db.CD.Enabled
+    elseif type == "drs" then
+        return self.db.DR.Enabled
+    end
+    BONK:Print("Unknown type "..type)
 end

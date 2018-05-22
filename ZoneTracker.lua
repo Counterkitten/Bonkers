@@ -9,7 +9,6 @@ BONK.BZT = BZT
 -- BZT:Initialize
 ------
 function BZT:Initialize()
-    BONK:Print("BZT Initializing")
     self.instanceType = "none"
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self:RegisterEvent("ADDON_LOADED", "ZONE_CHANGED_NEW_AREA")
@@ -19,11 +18,7 @@ end
 -- BZT:InArena
 ------
 function BZT:InArena()
-    if E.db.BONK.General.Debug then
-        return true
-    else
-        return self.instanceType == "arena"
-    end
+    return self.instanceType == "arena"
 end
 
 ------
@@ -37,8 +32,8 @@ end
 -- BZT:ZONE_CHANGED_NEW_AREA
 ------
 function BZT:ZONE_CHANGED_NEW_AREA(event)
-    BONK:Print(event)
     local _, instanceType = IsInInstance()
+    self.instanceType = instanceType
 
     if self:InArena() == true then
         BONK.BFM:Start()
@@ -47,5 +42,4 @@ function BZT:ZONE_CHANGED_NEW_AREA(event)
         BONK.BFM:Stop()
         BONK.BCH:Stop()
     end
-    self.instanceType = instanceType
 end

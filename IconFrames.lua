@@ -57,8 +57,8 @@ function BIF:ConstructIcon(iconID)
 
     icon.cdtext = self:CreateText(icon, self.fontSize)
 
-    if self.drFontSize then
-        icon.drtext =  self:CreateText(icon, self.drFontSize)
+    if self.hasDR then
+        icon.drtext =  self:CreateText(icon, self.drFontSize, true)
         icon.diminished = 0
     end
 
@@ -141,7 +141,7 @@ end
 -- BIF:Hide
 ------
 function BIF:Hide(force)
-    if force or (self:IsShowing() and not self:ShouldShow()) then
+    if force or not self:IsEnabled() or (self:IsShowing() and not self:ShouldShow()) then
         self.icon:Hide()
         self.icon.border:Hide()
         self.icon:ClearAllPoints()
@@ -204,9 +204,8 @@ end
 ------
 -- BIF:UpdateIconSize
 ------
-function BIF:UpdateIconSettings(size, fontSize, drFontSize)
-    self.icon:SetWidth(self.parent:GetHeight()*size)
-    self.icon:SetHeight(self.parent:GetHeight()*size)
+function BIF:UpdateSettings(size, fontSize, drFontSize)
+    self:SetSize(size)
     self.icon.cooldown:SetAllPoints(self.icon)
     self.icon.texture:SetAllPoints(self.icon)
 
@@ -222,8 +221,8 @@ end
 function BIF:SetSize(size)
     self.size = size
     if self.icon then
-        icon:SetWidth(size)
-        icon:SetHeight(size)
+        self.icon:SetWidth(self.parent:GetHeight()*size)
+        self.icon:SetHeight(self.parent:GetHeight()*size)
     end
 end
 
@@ -391,10 +390,14 @@ end
 ------
 -- BIF:CreateText
 ------
-function BIF:CreateText(icon, fontSize)
+function BIF:CreateText(icon, fontSize, isDR)
     local text = icon.cooldown:CreateFontString(nil, "OVERLAY")
     text:SetJustifyH("CENTER")
-    text:SetPoint("CENTER", icon.cooldown)
+    if (isDR) then
+        text:SetPoint("BOTTOMRIGHT", icon.cooldown)
+    else
+        text:SetPoint("CENTER", icon.cooldown)
+    end
     text:SetAlpha(0)
     text:SetFont(E["media"].normFont, fontSize, "OUTLINE")
 

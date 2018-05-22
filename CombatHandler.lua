@@ -8,7 +8,6 @@ BONK.BCH = BCH
 -- BCH:Initialize
 ------
 function BCH:Initialize()
-    BONK:Print("BCH Initializing")
     self.db = OmniBar.db
     self.key = "OmniBar"..OmniBar.index-1
     self.cooldowns = self.db.cooldowns
@@ -24,8 +23,8 @@ function BCH:Start()
     if self.running == false then
         self.running = true
         self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-        self:RegisterEvent("ARENA_COOLDOWNS_UPDATE")
-    	self:RegisterEvent("ARENA_CROWD_CONTROL_SPELL_UPDATE")
+        --self:RegisterEvent("ARENA_COOLDOWNS_UPDATE")
+    	--self:RegisterEvent("ARENA_CROWD_CONTROL_SPELL_UPDATE")
     end
 end
 
@@ -44,14 +43,14 @@ function BCH:IsHostile(flags)
     if bit.band(flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
         return true
     end
-    return nil
+    return false
 end
 
 ------
 -- BCH:ParseCDEvent
 ------
 function BCH:ParseCDEvent(sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID)
-    if not self:IsHostile(sourceFlags) then
+    if BONK.BFM:GetUnitFrame(sourceGUID) then
         if spellID == 59752 or spellID == 42292 or spellID == 195710 or spellID == 208683 or spellID == 59752 or spellID == 20589 or spellID == 20594 or spellID == 7744 then
             self:DispatchCast(sourceGUID, "trinket", spellID, nil, nil)
         elseif OmniBar.cooldowns[spellID] then
@@ -67,10 +66,10 @@ end
 -- BCH:ParseDREvent
 ------
 function BCH:ParseDREvent(sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID)
-    if destName == UnitName("player") or IsInGroup(destGUID) then
+    if BONK.BFM:GetUnitFrame(destGUID) then
         local drCat = DRData:GetSpellCategory(spellID)
         if drCat then
-            if self:IsHostile(sourceFlags) then
+            if self:IsHostile(destFlags) ~= self:IsHostile(sourceFlags) then
                 local duration = DRData:GetResetTime()
                 self:DispatchCast(destGUID, "drs", spellID, duration, drCat)
             end
@@ -161,7 +160,7 @@ function BCH:ARENA_COOLDOWNS_UPDATE(event, unit)
     C_PvP.RequestCrowdControlSpell(unit)
     local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
 
-    BONK:Print("ARENA_COOLDOWNS_UPDATE", unit, spellID, duration)
+    BONK:Print("ARENA_COOLDOWNS_UPDATE "..unit.." "..spellID.." "..duration)
 end
 
 ------
@@ -170,5 +169,5 @@ end
 function BCH:ARENA_CROWD_CONTROL_SPELL_UPDATE(event, unit, spellID)
     if not unit then return end
 
-    BONK:Print("ARENA_CROWD_CONTROL_SPELL_UPDATE", unit, spellID)
+    BONK:Print("ARENA_CROWD_CONTROL_SPELL_UPDATE"..unit.." "..spellID)
 end

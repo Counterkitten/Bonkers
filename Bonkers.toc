@@ -8,6 +8,7 @@
 
 Libs\load_libs.xml
 
+Settings.lua
 Bonkers.lua
 EventHandler.lua
 IconFrames.lua

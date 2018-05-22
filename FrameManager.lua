@@ -3,8 +3,6 @@ local UF = E:GetModule("UnitFrames")
 
 local GetNumGroupMembers = GetNumGroupMembers
 
-local db = E.db.BONK
-
 local BFM = BONK:NewEventHandler()
 BONK.BFM = BFM
 
@@ -12,7 +10,6 @@ BONK.BFM = BFM
 -- BFM:Initialize
 ------
 function BFM:Initialize()
-    BONK:Print("BFM Initializing")
     self.party = {}
     self.arena = {}
     self.map = {}
@@ -34,7 +31,7 @@ end
 ------
 -- BFM:Start
 ------
-function BFM:Start()
+function BFM:Start(isTest)
     if self.running == false then
         BONK:Print("Starting BFM")
         self.running = true
@@ -43,6 +40,7 @@ function BFM:Start()
         self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS", "GROUP_ROSTER_UPDATE")
 
         self:AssignPartyFrames()
+        self:AssignArenaFrames(isTest)
     end
 end
 
@@ -68,21 +66,30 @@ end
 ------
 -- BFM:AssignArenaFrames
 ------
-function BFM:AssignArenaFrames()
-    for unit, group in pairs(UF.groupunits) do
-        BONK:Print(unit)
-        BONK:Print(group)
+function BFM:AssignArenaFrames(isTest)
+    for i = 1, 5, 1 do
+        local uf = UF["arena"..i]
+        if uf then
+            if isTest then
+                self:AssignGroupFrame(uf, self.arena, i)
+            else
+                self:AssignGroupFrame(uf, self.arena)
+            end
+        end
     end
 end
 
 ------
 -- BFM:AssignFrame
 ------
-function BFM:AssignGroupFrame(unitFrame, group)
+function BFM:AssignGroupFrame(unitFrame, group, testi)
     if not unitFrame or not unitFrame.unit then return end
 
     local GUID = UnitGUID(unitFrame.unit)
     if not GUID then return end
+    if testi then
+        GUID = GUID..testi
+    end
 
     if self.map[GUID] then
         self.map[GUID]:UpdateParent(unitFrame)
@@ -91,7 +98,7 @@ function BFM:AssignGroupFrame(unitFrame, group)
         if not frame then
             self:ReleaseAllFrames()
             self:AssignPartyFrames()
-            --self:AssignArenaFrames()
+            self:AssignArenaFrames()
         end
 
         frame:AssignFrame(unitFrame, GUID)
@@ -146,7 +153,7 @@ end
 ------
 function BFM:RefreshSettings()
     for _,frame in pairs(self.map) do
-        frame:UpdateIcons(frame)
+        frame:RefreshSettings()
     end
 end
 
@@ -155,7 +162,11 @@ end
 ------
 function BFM:ShowTestIcons()
     if self.running == false then
-        self:Start()
+        if E.db.unitframe.units['arena']['enable'] then
+            UF:ToggleForceShowGroupFrames('arena', 5)
+            self.showingArenaTest = true
+        end
+        self:Start(true)
     end
 
     for _,frame in pairs(self.map) do
@@ -171,6 +182,10 @@ end
 -- BFM:HideTestIcons
 ------
 function BFM:HideTestIcons()
+    if self.showingArenaTest == true then
+        UF:ToggleForceShowGroupFrames('arena', 5)
+        self.showingArenaTest = false
+    end
     self:Stop()
 end
 
@@ -181,4 +196,5 @@ function BFM:GROUP_ROSTER_UPDATE(event, a)
     BONK:Print(event)
     BONK:Print(a)
     self:AssignPartyFrames()
+    self:AssignArenaFrames()
 end
