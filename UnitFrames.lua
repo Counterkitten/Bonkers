@@ -125,7 +125,7 @@ function BUF:HandleCast(type, spellID, startTime, duration, category)
         end
     end
 
-    icon:BeginCooldown(spellID, startTime, duration+10, category)
+    icon:BeginCooldown(spellID, startTime, duration, category)
     self:UpdateIcons()
 end
 
