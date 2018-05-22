@@ -53,8 +53,8 @@ function BCH:ParseCDEvent(sourceGUID, sourceName, sourceFlags, destGUID, destNam
     if BONK.BFM:GetUnitFrame(sourceGUID) then
         if spellID == 59752 or spellID == 42292 or spellID == 195710 or spellID == 208683 or spellID == 59752 or spellID == 20589 or spellID == 20594 or spellID == 7744 then
             self:DispatchCast(sourceGUID, "trinket", spellID, nil, nil)
-        elseif OmniBar.cooldowns[spellID] then
-            if (OmniBar_IsSpellEnabled(self, spellID)) then
+        elseif BCD.cooldowns[spellID] then
+            if self:IsSpellEnabled(spellID, sourceFlags) then
                 BONK:Print("Dispatching "..spellID)
                 self:DispatchCast(sourceGUID, "spells", spellID)
             end
@@ -97,16 +97,35 @@ function BCH:DispatchCast(targetGUID, type, spellID, duration, category)
 end
 
 ------
+-- BCH:IsSpellEnabled
+------
+function BCH:IsSpellEnabled(spellID, flags)
+    if not spellID or not flags then return end
+    local db = E.db.BONK.Party.Track
+    if self:IsHostile(flags) then
+        db = E.db.BONK.Arena.Track
+    end
+
+    -- Check for an explicit rule
+    local spell = "spell"..spellID
+    if type(db[spell]) == "boolean" then
+        if db[spell] then
+            return true
+        end
+    end
+end
+
+------
 -- BCH:GetSpellCooldown
 ------
 function BCH:GetSpellCooldown(target, spellID)
     local duration = 0
 
-    local cd = OmniBar.cooldowns[spellID]
+    local cd = BCD.cooldowns[spellID]
     if cd.duration then
         duration = cd.duration
     elseif cd.parent then
-        duration = OmniBar.cooldowns[cd.parent].duration
+        duration = BCD.cooldowns[cd.parent].duration
     end
 
     if type(duration) == "table" then

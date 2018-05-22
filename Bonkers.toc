@@ -2,12 +2,13 @@
 ## Title: |cff1784d1ElvUI|r |cff00b3ffBonkers|r
 ## Author: Battlecat
 ## Version: 5.2.3
-## RequiredDeps: ElvUI, OmniBar
+## RequiredDeps: ElvUI
 ## X-ElvVersion: 10.73
 ## SavedVariabled: BonkersDB
 
 Libs\load_libs.xml
 
+Cooldowns.lua
 Settings.lua
 Bonkers.lua
 EventHandler.lua

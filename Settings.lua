@@ -33,6 +33,18 @@ function BSF:GetSettings()
                 name = "DRs",
                 args = self:GetIconSettings("DR")
             },
+            PSpells = {
+                order = 5,
+                type = "group",
+                name = "Party Spells",
+                args = BCD:GetSpells("Party")
+            },
+            ASpells = {
+                order = 6,
+                type = "group",
+                name = "Arena Spells",
+                args = BCD:GetSpells("Arena")
+            }
 		},
 	}
 end
@@ -212,7 +224,6 @@ function BSF:GeneralSettings()
             end,
             set = function(info, value)
                 E.db.BONK.General.Debug = value
-                self.BONK.BZT:ToggleDebug()
             end,
         },
     }
@@ -353,7 +364,7 @@ function BSF:MakeIconSettings(type, where)
 end
 
 function BSF:GetDefaults()
-    return {
+    local def = {
         ["General"] = {
             ["Stack"] = false,
             ["SeparatorY"] = 3,
@@ -362,6 +373,11 @@ function BSF:GetDefaults()
         ["Party"] = self:GetIconDefaults(true),
         ["Arena"] = self:GetIconDefaults(false)
     }
+
+    def.Party.Track = BCD:GetSpellDefaults()
+    def.Arena.Track = BCD:GetSpellDefaults()
+
+    return def
 end
 
 function BSF:GetIconDefaults(trinket)
@@ -392,6 +408,7 @@ function BSF:GetIconDefaults(trinket)
         },
         ["General"] = {
             ["Order"] = "spells"
-        }
+        },
+        ["Track"] = {}
     }
 end

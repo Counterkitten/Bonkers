@@ -22,13 +22,6 @@ function BZT:InArena()
 end
 
 ------
--- BZT:DisableDebug
-------
-function BZT:ToggleDebug()
-    self:ZONE_CHANGED_NEW_AREA("DEBUG")
-end
-
-------
 -- BZT:ZONE_CHANGED_NEW_AREA
 ------
 function BZT:ZONE_CHANGED_NEW_AREA(event)

@@ -167,6 +167,7 @@ function BFM:ShowTestIcons()
             self.showingArenaTest = true
         end
         self:Start(true)
+        BONK.BCH:Start()
     end
 
     for _,frame in pairs(self.map) do
@@ -187,6 +188,7 @@ function BFM:HideTestIcons()
         self.showingArenaTest = false
     end
     self:Stop()
+    BONK.BCH:Stop()
 end
 
 ------

@@ -45,6 +45,7 @@ function BONK:Initialize()
 	--Register plugin so options are properly inserted when config is loaded
 
     BSF.BONK = self
+	BCD:Initialize(self, E.db.BONK)
 	EP:RegisterPlugin(addonName, BONK.InsertOptions)
     self.BFM:Initialize()
     self.BCH:Initialize()
