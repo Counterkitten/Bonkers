@@ -51,6 +51,18 @@ function BIF:ConstructIcon(iconID)
     icon:SetNormalTexture(nil)
     icon.texture = self:CreateTexture(icon)
     icon.cooldown = self:CreateCooldown(icon)
+
+    icon.auraFrame = CreateFrame("Frame", nil, icon)
+    icon.auraFrame.borderWidth = 4
+    local bw = icon.auraFrame.borderWidth
+    icon.auraFrame:SetPoint("TOPLEFT", icon, "TOPLEFT", bw, -bw)
+    icon.auraFrame:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -bw, bw)
+    icon.auraFrame:SetFrameLevel(icon:GetFrameLevel()+2)
+    icon.auraFrame.texture = self:CreateTexture(icon.auraFrame)
+    icon.auraFrame:Hide()
+    icon.auraMark = self:CreateCooldown(icon, nil, true)
+    icon.auraMark:Hide()
+
     icon.cooldownMark = self:CreateCooldown(icon, true)
     icon.cooldownMark.max = 0
     icon.border = self:CreateBorder(icon)
@@ -80,7 +92,7 @@ end
 ------
 -- BIF:BeginCooldown
 ------
-function BIF:BeginCooldown(spellID, startTime, duration, category)
+function BIF:BeginCooldown(spellID, startTime, duration, category, auraInfo)
     if self.active then
         if startTime - self.icon.startTime < 1 then return end
 
@@ -91,9 +103,21 @@ function BIF:BeginCooldown(spellID, startTime, duration, category)
     self.icon:UnregisterAllEvents()
 
     self.active = true
+    self.icon.auraInfo = auraInfo
     self.icon.startTime = startTime
     self.icon.duration = duration
     self.icon.timeLeft = duration;
+
+    if auraInfo and (not self.icon.drtext and not self.textureOverride) then
+        if auraInfo.canSteal then
+            self.icon.auraMark:SetSwipeColor(1, 0, 0, 1)
+        else
+            self.icon.auraMark:SetSwipeColor(1, 0, 0, 1)
+        end
+        self.icon.auraMark:SetCooldown(auraInfo.expires - auraInfo.duration, auraInfo.duration)
+        self.icon.auraMark:Show()
+        self.icon.auraFrame:Show()
+    end
 
     self.icon.border.alpha = 1
 
@@ -119,7 +143,6 @@ function BIF:BeginCooldown(spellID, startTime, duration, category)
     self.icon:SetScript("OnUpdate", function(icon, elapsed)
         self:UpdateCooldown(icon, elapsed)
     end)
-
 end
 
 ------
@@ -144,9 +167,17 @@ function BIF:Hide(force)
     if force or not self:IsEnabled() or (self:IsShowing() and not self:ShouldShow()) then
         self.icon:Hide()
         self.icon.border:Hide()
+        self.icon.auraInfo = nil
         self.icon:ClearAllPoints()
         self.showing = nil
     end
+end
+
+------
+-- BIF:HideAura
+------
+function BIF:HideAura()
+    self.icon.auraInfo = nil
 end
 
 ------
@@ -236,6 +267,20 @@ function BIF:SetTexture(spellID)
 
     if self.icon then
         self.icon.texture:SetTexture(texture)
+        if self.icon.auraFrame then
+            self.icon.auraFrame.texture:SetTexture(texture)
+
+            local bw = self.icon.auraFrame.borderWidth
+            local d = bw / self.icon:GetHeight()
+
+            local left, right, top, bottom = 0, 1, 0, 1
+            left = left + (right - left) * d
+            right = right - (right - left) * d
+            top = top + (bottom - top) * d
+            bottom = bottom - (bottom - top) * d
+
+            self.icon.auraFrame.texture:SetTexCoord(left, right, top, bottom)
+        end
     end
 end
 
@@ -305,27 +350,36 @@ end
 function BIF:CooldownDone(cd)
     local self = cd:GetParent().iconFrame
     self:Reset()
-    self.unitFrame:UpdateIcons(self.unitFrame)
+    self.unitFrame:UpdateIcons()
 end
 
 ------
 -- BIF:CreateCooldown
 ------
-function BIF:CreateCooldown(icon, isMark)
+function BIF:CreateCooldown(icon, isMark, isBorder)
     local cooldown = nil
     if isMark then
         cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
         cooldown:SetSwipeColor(1, 0, 0, 0.3)
         cooldown:SetSwipeTexture("Interface\\ChatFrame\\ChatFrameBackground")
+        cooldown:SetFrameLevel(icon:GetFrameLevel()+3)
+    elseif isBorder then
+        cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+        cooldown:SetSwipeColor(1, 0, 0, 1)
+        cooldown:SetSwipeTexture("Interface\\ChatFrame\\ChatFrameBackground")
+        cooldown:SetFrameLevel(icon:GetFrameLevel()+1)
     else
         cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
         cooldown:SetSwipeColor(0, 0, 0, 0.5)
         cooldown:SetReverse(true)
+        cooldown:SetScript("OnCooldownDone", function(cd)
+            self:CooldownDone(cd)
+        end)
+        cooldown:SetAllPoints()
+        cooldown:SetFrameLevel(icon:GetFrameLevel()+4)
     end
+
     cooldown:SetAllPoints()
-    cooldown:SetScript("OnCooldownDone", function(cd)
-        self:CooldownDone(cd)
-    end)
 
     return cooldown
 end
@@ -338,10 +392,15 @@ function BIF:UpdateCooldown(icon, elapsed)
         icon.timeLeft = icon.timeLeft - elapsed
         self:SetFormattedNumber(icon.cdtext, icon.timeLeft)
 
-        if icon.border.alpha > 0 then
-            icon.border.alpha = icon.border.alpha - 0.005
-            icon.border:SetBackdropBorderColor(1, 0, 0, icon.border.alpha)
-        end
+        -- if icon.auraInfo and icon.auraInfo.expires > GetTime() then
+        --     if icon.auraInfo.canSteal then
+        --         icon.border:SetBackdropBorderColor(0, 0, 1, icon.border.alpha)
+        --     else
+        --         icon.border:SetBackdropBorderColor(1, 0, 0, icon.border.alpha)
+        --     end
+        -- else
+        --     icon.border:SetBackdropBorderColor(0, 0, 0, 0)
+        -- end
     end
 end
 
@@ -428,7 +487,7 @@ function BIF:SetFormattedNumber(text, number)
 		text:SetText(string.format("%sm %.0f", minutes, seconds))
 	else
 		if number > 5 then
-            local r = 1; local g = 0.65; local b = 0;
+            local r = 1; local g = 1; local b = 1;
 			text:SetTextColor(r, g, b)
 			text:SetText(string.format("%.0f", number))
 		else
