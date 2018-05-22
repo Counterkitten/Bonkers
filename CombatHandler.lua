@@ -8,10 +8,6 @@ BONK.BCH = BCH
 -- BCH:Initialize
 ------
 function BCH:Initialize()
-    self.db = OmniBar.db
-    self.key = "OmniBar"..OmniBar.index-1
-    self.cooldowns = self.db.cooldowns
-    self.settings = self.db.profile.bars[self.key]
     self.running = false
 end
 
