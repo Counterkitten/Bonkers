@@ -116,7 +116,7 @@ function BUF:HandleCast(type, spellID, startTime, duration, category)
     if not icon then return end
 
     if not skip and not icon:IsActive() then
-        if OmniBar.cooldowns[spellID] and OmniBar.cooldowns[spellID].default then
+        if BCD.cooldowns[spellID] and BCD.cooldowns[spellID].default then
             table.insert(self.active[type], 1, icon)
         else
             table.insert(self.active[type], icon)
