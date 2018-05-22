@@ -45,23 +45,42 @@ end
 ------
 -- BCH:ParseCDEvent
 ------
-function BCH:ParseCDEvent(sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID)
+function BCH:ParseCDEvent(sourceGUID, sourceFlags, destGUID, destFlags, spellID)
     if BONK.BFM:GetUnitFrame(sourceGUID) then
         if spellID == 59752 or spellID == 42292 or spellID == 195710 or spellID == 208683 or spellID == 59752 or spellID == 20589 or spellID == 20594 or spellID == 7744 then
-            self:DispatchCast(sourceGUID, "trinket", spellID, nil, nil)
+            self:DispatchCast(sourceGUID, "trinket", spellID)
         elseif BCD.cooldowns[spellID] then
             if self:IsSpellEnabled(spellID, sourceFlags) then
                 BONK:Print("Dispatching "..spellID)
-                self:DispatchCast(sourceGUID, "spells", spellID)
+                local auraInfo = self:GetAuraInfo(sourceGUID, sourceFlags, spellID, true)
+                if not auraInfo then
+                    auraInfo = self:GetAuraInfo(destGUID, destFlags, spellID)
+                    if auraInfo.unitCaster and UnitGUID(auraInfo.unitCaster) ~= sourceGUID then
+                        aureInfo = nil
+                    end
+                end
+
+                self:DispatchCast(sourceGUID, "spells", spellID, nil, nil, auraInfo)
             end
         end
     end
 end
 
 ------
+-- BCH:ParseCDEnded
+------
+function BCH:ParseCDEnded(sourceGUID, spellID)
+    local name, t, icon = GetSpellInfo(spellID)
+    local target = BONK.BFM:GetUnitFrame(sourceGUID)
+    if not target then return end
+
+    target:HideAura(spellID)
+end
+
+------
 -- BCH:ParseDREvent
 ------
-function BCH:ParseDREvent(sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID)
+function BCH:ParseDREvent(sourceFlags, destGUID, destFlags, spellID)
     if BONK.BFM:GetUnitFrame(destGUID) then
         local drCat = DRData:GetSpellCategory(spellID)
         if drCat then
@@ -76,7 +95,7 @@ end
 ------
 -- BCH:DispatchCast
 ------
-function BCH:DispatchCast(targetGUID, type, spellID, duration, category)
+function BCH:DispatchCast(targetGUID, type, spellID, duration, category, auraInfo)
     local startTime = GetTime()
     local target = BONK.BFM:GetUnitFrame(targetGUID)
     if not target then return end
@@ -89,7 +108,7 @@ function BCH:DispatchCast(targetGUID, type, spellID, duration, category)
         end
     end
 
-    target:HandleCast(type, spellID, startTime, duration, category)
+    target:HandleCast(type, spellID, startTime, duration, category, auraInfo)
 end
 
 ------
@@ -155,14 +174,39 @@ function BCH:GetTrinketCooldown(target, spellID)
 end
 
 ------
+-- BCH:GetAuraInfo
+------
+function BCH:GetAuraInfo(targetGUID, flags, spellID, showSteal)
+    local target = BONK.BFM:GetUnitFrame(targetGUID)
+    if not target then return nil end
+
+    local name, _, _ = GetSpellInfo(spellID)
+    local _, _, _, _, _, duration, expirationTime, unitCaster, canStealOrPurge = UnitAura(target:GetUnitName(), name)
+    if not expirationTime then return nil end
+
+    local info = {
+        duration = duration,
+        expires = expirationTime,
+        caster = unitCaster
+    }
+
+    if showSteal and canStealOrPurge then
+        info["canSteal"] = true
+    end
+
+    return info
+end
+
+------
 -- BCH:COMBAT_LOG_EVENT_UNFILTERED
 ------
 function BCH:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
     local _, eventType, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags,_, spellID = ...
     if (eventType == "SPELL_CAST_SUCCESS" or eventType == "SPELL_AURA_APPLIED") then
-        self:ParseCDEvent(sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID)
+        self:ParseCDEvent(sourceGUID, sourceFlags, destGUID, destFlags, spellID)
     elseif (eventType == "SPELL_AURA_REFRESH" or eventType == "SPELL_AURA_REMOVED") then
-        self:ParseDREvent(sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID)
+        self:ParseCDEnded(sourceGUID, spellID)
+        self:ParseDREvent(sourceFlags, destGUID, destFlags, spellID)
     end
 end
 

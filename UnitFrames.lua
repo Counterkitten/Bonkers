@@ -96,7 +96,7 @@ end
 ------
 -- BUF:HandleCast
 ------
-function BUF:HandleCast(type, spellID, startTime, duration, category)
+function BUF:HandleCast(type, spellID, startTime, duration, category, auraInfo)
     local icon = nil
     local skip = nil
 
@@ -127,6 +127,15 @@ function BUF:HandleCast(type, spellID, startTime, duration, category)
 
     icon:BeginCooldown(spellID, startTime, duration, category)
     self:UpdateIcons()
+end
+
+------
+-- BUF:HideAura
+------
+function BUF:HideAura(spellID)
+    if self.spells[spellID] then
+        self.spells[spellID]:HideAura()
+    end
 end
 
 ------
@@ -173,7 +182,7 @@ function BUF:UpdateIcons()
         self:UpdateIconPosition(self.trinket, "trinket", 0)
     end
 
-    for _,type in pairs(self:GetOrder()) do
+    for _,type in pairs(self:GetOrder(true)) do
         self:CheckActiveIcons(type)
         for i = 1, #self.active[type], 1 do
             local icon = self.active[type][i]
@@ -302,6 +311,13 @@ function BUF:GetOrder(reverse)
         order[1] = "spells"
     end
     return order
+end
+
+------
+-- BUF:GetUnitName
+------
+function BUF:GetUnitName()
+    return self.parent.unit
 end
 
 ------
