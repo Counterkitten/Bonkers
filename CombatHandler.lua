@@ -55,7 +55,7 @@ function BCH:ParseCDEvent(sourceGUID, sourceFlags, destGUID, destFlags, spellID)
                 local auraInfo = self:GetAuraInfo(sourceGUID, sourceFlags, spellID, true)
                 if not auraInfo then
                     auraInfo = self:GetAuraInfo(destGUID, destFlags, spellID)
-                    if auraInfo.unitCaster and UnitGUID(auraInfo.unitCaster) ~= sourceGUID then
+                    if auraInfo and auraInfo.unitCaster and UnitGUID(auraInfo.unitCaster) ~= sourceGUID then
                         aureInfo = nil
                     end
                 end
