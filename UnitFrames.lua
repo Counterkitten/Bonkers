@@ -27,6 +27,7 @@ function BONK.NewFrame(hostile)
     self.hostile = hostile
     self.parent = nil
     self.GUID = nil
+    self.unit = nil
     self.spells = {}
     self.drs = {}
     self.active = {}
@@ -42,6 +43,7 @@ end
 function BUF:AssignFrame(parent, GUID)
     self.parent = parent
     self.GUID = GUID
+    self.unit = parent.unit
     BONK:Print("Assigning", self.GUID)
 
     if not self.hostile then
@@ -51,20 +53,32 @@ function BUF:AssignFrame(parent, GUID)
             self.trinket = trinket
         end
 
-        if parent.unit == "player" then
-            self.specID = GetSpecialization()
+        if self.unit == "player" or UnitGUID(self.unit) == UnitGUID("player") then
+            local spec = GetSpecialization()
+            self.specID = GetSpecializationInfo(spec)
         else
-            self.specID = GetInspectSpecialization(parent.unit)
+            self.specID = 1
         end
     else
-        self.specID = GetArenaOpponentSpec(string.sub(parent.unit, 6, 6))
-    end
-
-    if self.specID then
-        BONK:Print("Spec "..self.specID)
+        self.specID = GetArenaOpponentSpec(string.sub(self.unit, 6, 6))
     end
 
     self:UpdateIcons()
+end
+
+------
+-- BUF:UpdateParent
+------
+
+function BUF:GetBattleFieldIndexFromUnitName(name)
+	local nameFromIndex
+	for index = 1, GetNumBattlefieldScores() do
+		nameFromIndex = GetBattlefieldScore(index)
+		if nameFromIndex == name then
+			return index
+		end
+	end
+	return nil
 end
 
 ------
@@ -96,7 +110,7 @@ end
 ------
 -- BUF:HandleCast
 ------
-function BUF:HandleCast(type, spellID, startTime, duration, category, auraInfo)
+function BUF:HandleCast(type, spellID, startTime, duration, category, auraInfo, forceShrink)
     local icon = nil
     local skip = nil
 
@@ -125,7 +139,7 @@ function BUF:HandleCast(type, spellID, startTime, duration, category, auraInfo)
         end
     end
 
-    icon:BeginCooldown(spellID, startTime, duration, category, auraInfo)
+    icon:BeginCooldown(spellID, startTime, duration, category, auraInfo, forceShrink)
     self:UpdateIcons()
 end
 
@@ -152,6 +166,7 @@ function BUF:Release()
     end
     self.trinket = nil
     self.GUID = nil
+    self.unit = nil
     self.parent = nil
 end
 
@@ -178,15 +193,34 @@ end
 -- BUF:UpdateIcons
 ------
 function BUF:UpdateIcons()
+    self.shrunk = {}
+    self.normal = {}
+
     if self.trinket then
         self:UpdateIconPosition(self.trinket, "trinket", 0)
     end
 
+    for _,type in pairs(self:GetOrder()) do
+        for i = #self.active[type], 1, -1 do
+            self.active[type][i].icon:ClearAllPoints()
+            --self.active[type][i].icon:SetPoint("RIGHT", self.parent, "LEFT")
+        end
+    end
+
     for _,type in pairs(self:GetOrder(true)) do
         self:CheckActiveIcons(type)
-        for i = 1, #self.active[type], 1 do
-            local icon = self.active[type][i]
-            self:UpdateIconPosition(icon, type, i)
+        if type == "drs" or #self.shrunk == 0 then
+            for i = 1, #self.active[type], 1 do
+                local icon = self.active[type][i]
+                self:UpdateIconPosition(icon, type, self.active[type], i)
+            end
+        else
+            for i = 1, #self.shrunk, 1 do
+                self:UpdateIconPosition(self.shrunk[i], type, self.shrunk, i, true)
+            end
+            for i = 1, #self.normal, 1 do
+                self:UpdateIconPosition(self.normal[i], type, self.normal, i)
+            end
         end
     end
 end
@@ -197,9 +231,17 @@ end
 function BUF:CheckActiveIcons(type)
     local remove = {}
 
-    for _,icon in pairs(self.active[type]) do
+    for id,icon in pairs(self.active[type]) do
         if not icon:IsActive() then
             remove[icon.iconID] = true
+        end
+
+        if type == "spells" then
+            if icon:ShouldShrink() then
+                self.shrunk[#self.shrunk+1] = icon
+            else
+                self.normal[#self.normal+1] = icon
+            end
         end
     end
 
@@ -213,13 +255,14 @@ end
 ------
 -- BUF:UpdateIconPosition
 ------
-function BUF:UpdateIconPosition(icon, type, j)
+function BUF:UpdateIconPosition(icon, type, active, j, shrunk)
+    if not icon then return end
     if icon.parent ~= self.parent then
         icon:SetParent(self.parent)
     end
 
-    local info = self:GetPositionInfo(icon, type, j)
-    icon:UpdatePosition(info)
+    local info = self:GetPositionInfo(icon, type, active, j, shrunk)
+    icon:UpdatePosition(info, icon:ShouldShrink())
 end
 
 ------
@@ -227,13 +270,15 @@ end
 --
 -- A total mess, need to refactor
 ------
-function BUF:GetPositionInfo(icon, type, j)
+function BUF:GetPositionInfo(icon, type, active, j, shrunk)
     local info = {}
 
     local ldb = nil
     local other = nil
     local otherActive = false
+    local otherAnchor = nil
     local otherPaddingX = 0
+    local shouldShrink = nil
 
     if type == "trinket" then
         ldb = self.db.Trinket
@@ -241,18 +286,39 @@ function BUF:GetPositionInfo(icon, type, j)
         ldb = self.db.CD
         other = "drs"
         otherActive = #self.active.drs > 0
+        if otherActive then
+            otherAnchor = self.active[other][#self.active[other]].icon
+        end
         otherPaddingX = self.db.DR.PaddingX
+        info.canShrink = true
+        info.shrunk = shrunk
     elseif type == "drs" then
         ldb = self.db.DR
         other = "spells"
         otherActive = #self.active.spells > 0
+        if otherActive then
+            if #self.shrunk > 0 then
+                if #self.normal > 0 then
+                    otherAnchor = self.normal[#self.normal].icon
+                elseif #self.shrunk % 2 == 1 then
+                    otherAnchor = self.shrunk[#self.shrunk].icon
+                else
+                    otherAnchor = self.shrunk[#self.shrunk-1].icon
+                end
+            else
+                otherAnchor = self.active[other][#self.active[other]].icon
+            end
+        end
         otherPaddingX = self.db.CD.PaddingX
     else
         return
     end
 
     info.anchor = self.parent
-    info.prefix = "TOP"
+    info.prefix1 = ""
+    info.prefix2 = ""
+    info.suffix1 = "RIGHT"
+    info.suffix2 = "LEFT"
     info.enabled = ldb.Enabled
     info.paddingX = ldb.PaddingX or 0
     info.paddingY = 0
@@ -263,16 +329,46 @@ function BUF:GetPositionInfo(icon, type, j)
             if ldb.Position == self.db.Trinket.Position and self.trinket then
                 info.anchor = self.trinket.icon
             end
-            if self.db.CD.Position == self.db.DR.Position then
+            if not shrunk and info.canShrink and #self.shrunk > 0 then
+                if #self.shrunk % 2 == 1 then
+                    info.anchor = self.shrunk[#self.shrunk].icon
+                else
+                    info.anchor = self.shrunk[#self.shrunk-1].icon
+                end
+                info.paddingX = info.paddingX * 2
+            elseif self.db.CD.Position == self.db.DR.Position then
                 if type ~= self.db.General.Order and otherActive == true then
-                    info.anchor = self.active[other][#self.active[other]].icon
+                    info.anchor = otherAnchor
                     info.paddingX = info.paddingX + otherPaddingX
                 end
             end
+
             info.paddingX = info.paddingX + ldb.SeparatorX
+            if shrunk then
+                info.prefix1 = "BOTTOM"
+            end
         else
-            info.anchor = self.active[type][j-1].icon
-            info.paddingX = info.paddingX * 2
+            if shrunk then
+                if j % 2 == 1 then
+                    info.anchor = active[j-2].icon
+                    info.paddingX = info.paddingX
+                else
+                    info.anchor = active[j-1].icon
+                    info.prefix1 = "TOP"
+                    info.prefix2 = "BOTTOM"
+                    info.suffix1 = ""
+                    info.suffix2 = ""
+                    info.paddingX = 0
+                end
+            else
+                info.anchor = active[j-1].icon
+                info.paddingX = info.paddingX * 2
+            end
+        end
+
+        if not shrunk and info.anchor.shrunk then
+            info.prefix1 = "TOP"
+            info.prefix2 = info.prefix1
         end
     end
 

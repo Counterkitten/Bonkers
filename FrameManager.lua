@@ -61,6 +61,21 @@ function BFM:AssignPartyFrames()
         local uf = UF.headers.party.groups[1][i]
         self:AssignGroupFrame(uf, self.party)
     end
+    self:GetPartySpecs()
+end
+
+------
+-- BFM:GetPartySpecs
+------
+function BFM:GetPartySpecs()
+    for i = 1, self:GroupSize(), 1 do
+        local frame = self.party[i]
+        if (not frame.specID or frame.specID == 1) and frame.GUID ~= UnitGUID("player") then
+            self:RegisterEvent("INSPECT_READY")
+            NotifyInspect(frame.unit)
+            return
+        end
+    end
 end
 
 ------
@@ -171,9 +186,13 @@ function BFM:ShowTestIcons()
     end
 
     for _,frame in pairs(self.map) do
-        frame:HandleCast("trinket", 208683, GetTime(), 600)
-        frame:HandleCast("spells", 136, GetTime(), 600)
-        frame:HandleCast("spells", 79140, GetTime(), 600)
+        frame:HandleCast("trinket", 208683, GetTime(), 600, nil, nil, true)
+        frame:HandleCast("spells", 136, GetTime(), 600, nil, nil, true)
+        frame:HandleCast("spells", 79140, GetTime(), 600, nil, nil, true)
+        frame:HandleCast("spells", 206491, GetTime(), 600, nil, nil, true)
+        frame:HandleCast("spells", 211048, GetTime(), 600, nil, nil, true)
+        frame:HandleCast("spells", 12042, GetTime(), 600, nil, {duration = 10, expires = GetTime()+10, canSteal = true})
+        frame:HandleCast("spells", 212552, GetTime(), 600, nil, {duration = 20, expires = GetTime()+20})
         frame:HandleCast("drs", 33786, GetTime(), 600, "disorient")
         frame:HandleCast("drs", 3355, GetTime(), 600, "incapacitate")
     end
@@ -199,4 +218,14 @@ function BFM:GROUP_ROSTER_UPDATE(event, a)
     BONK:Print(a)
     self:AssignPartyFrames()
     self:AssignArenaFrames()
+end
+
+------
+-- BFM:INSPECT_READY
+------
+function BFM:INSPECT_READY(_, GUID)
+    local frame = self:GetUnitFrame(GUID)
+    frame.specID = GetInspectSpecialization(frame.unit)
+    self:UnregisterEvent("INSPECT_READY")
+    self:GetPartySpecs()
 end
