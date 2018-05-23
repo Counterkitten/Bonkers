@@ -178,7 +178,7 @@ end
 function BFM:ShowTestIcons()
     if self.running == false then
         if E.db.unitframe.units['arena']['enable'] then
-            UF:ToggleForceShowGroupFrames('arena', 5)
+            UF:ToggleForceShowGroupFrames('arena', 3)
             self.showingArenaTest = true
         end
         self:Start(true)
@@ -191,8 +191,8 @@ function BFM:ShowTestIcons()
         frame:HandleCast("spells", 79140, GetTime(), 600, nil, nil, true)
         frame:HandleCast("spells", 206491, GetTime(), 600, nil, nil, true)
         frame:HandleCast("spells", 211048, GetTime(), 600, nil, nil, true)
-        frame:HandleCast("spells", 12042, GetTime(), 600, nil, {duration = 10, expires = GetTime()+10, canSteal = true})
-        frame:HandleCast("spells", 212552, GetTime(), 600, nil, {duration = 20, expires = GetTime()+20})
+        frame:HandleCast("spells", 12042, GetTime(), 600, nil, {duration = 180, expires = GetTime()+120, canSteal = true})
+        frame:HandleCast("spells", 212552, GetTime(), 600, nil, {duration = 180, expires = GetTime()+178})
         frame:HandleCast("drs", 33786, GetTime(), 600, "disorient")
         frame:HandleCast("drs", 3355, GetTime(), 600, "incapacitate")
     end
@@ -203,7 +203,7 @@ end
 ------
 function BFM:HideTestIcons()
     if self.showingArenaTest == true then
-        UF:ToggleForceShowGroupFrames('arena', 5)
+        UF:ToggleForceShowGroupFrames('arena', 3)
         self.showingArenaTest = false
     end
     self:Stop()
