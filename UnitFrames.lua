@@ -244,7 +244,7 @@ function BUF:UpdateIcons()
 
     for _,type in pairs(self:GetOrder(true)) do
         self:CheckActiveIcons(type)
-        if type == "drs" or #self.shrunk == 0 then
+        if type == "drs" or #self.shrunk == 0 or not self.db.Shrink.Enabled then
             for i = 1, #self.active[type], 1 do
                 local icon = self.active[type][i]
                 self:UpdateIconPosition(icon, type, self.active[type], i)
@@ -314,6 +314,7 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
     local otherActive = false
     local otherAnchor = nil
     local otherPaddingX = 0
+    local otherPaddingY = 0
     local shouldShrink = nil
 
     if type == "trinket" then
@@ -326,7 +327,7 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
             otherAnchor = self.active[other][#self.active[other]].icon
         end
         otherPaddingX = self.db.DR.PaddingX
-        info.canShrink = true
+        info.canShrink = self.db.Shrink.Enabled
         info.shrunk = shrunk
     elseif type == "drs" then
         ldb = self.db.DR
@@ -334,12 +335,16 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
         otherActive = #self.active.spells > 0
         if otherActive then
             if #self.shrunk > 0 then
-                if #self.normal > 0 then
+                if #self.normal > 0 and (not self.db.Shrink.Detach or self.db.Shrink.Position == self.db.CD.Position or self.db.CD.Position == ldb.Position) then
                     otherAnchor = self.normal[#self.normal].icon
-                elseif #self.shrunk % 2 == 1 then
-                    otherAnchor = self.shrunk[#self.shrunk].icon
                 else
-                    otherAnchor = self.shrunk[#self.shrunk-1].icon
+                    if #self.shrunk % 2 == 1 then
+                        otherAnchor = self.shrunk[#self.shrunk].icon
+                    else
+                        otherAnchor = self.shrunk[#self.shrunk-1].icon
+                    end
+                    otherPaddingY = (self.parent:GetHeight()-(otherAnchor:GetHeight()*2))/2
+                    otherPaddingY = otherPaddingY - (self.parent:GetHeight()-icon.icon:GetHeight())/2
                 end
             else
                 otherAnchor = self.active[other][#self.active[other]].icon
@@ -359,27 +364,59 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
     info.paddingX = ldb.PaddingX or 0
     info.paddingY = 0
     info.position = ldb.Position
+    if shrunk and self.db.Shrink.Detach then
+        info.position = self.db.Shrink.Position
+    end
 
-    if other then
+    if shrunk and self.db.Shrink.Detach and self.db.Shrink.Position ~= "LEFT" and self.db.Shrink.Position ~= "RIGHT" then
+        info.detached = true
+        if info.position:find("LEFT") then
+            info.suffix1 = "LEFT"
+            info.suffix2 = "RIGHT"
+        else
+            info.paddingX = info.paddingX * -1
+        end
+        if j == 1 or j % self.db.Shrink.PerRow == 1 or self.db.Shrink.PerRow == 1 then
+            if info.position:find("TOP") then
+                info.prefix1 = "BOTTOM"
+                info.prefix2 = "TOP"
+            else
+                info.prefix1 = "TOP"
+                info.prefix2 = "BOTTOM"
+            end
+
+            info.suffix2 = info.suffix1
+
+            if j ~= 1 then
+                info.anchor = active[j-self.db.Shrink.PerRow].icon
+            end
+        else
+            info.anchor = active[j-1].icon
+        end
+    elseif other then
         if j == 1 then
             local separator = ldb.SeparatorX
-            if ldb.Position == self.db.Trinket.Position and self.trinket then
+            if info.position == self.db.Trinket.Position and self.trinket then
                 info.anchor = self.trinket.icon
-            elseif self.parent.db.pvpTrinket and ldb.Position == self.parent.db.pvpTrinket.position and self.parent.Trinket then
-                info.anchor = self.parent.Trinket
+            elseif self.parent.db.pvpTrinket and self.parent.db.pvpTrinket.enable then
+                if info.position == self.parent.db.pvpTrinket.position and self.parent.Trinket then
+                    info.anchor = self.parent.Trinket
+                end
             end
-            if not shrunk and info.canShrink and #self.shrunk > 0 then
+            if not shrunk and info.canShrink and #self.shrunk > 0 and (not self.db.Shrink.Detach or self.db.Shrink.Position == ldb.Position) then
                 if #self.shrunk % 2 == 1 then
                     info.anchor = self.shrunk[#self.shrunk].icon
                 else
                     info.anchor = self.shrunk[#self.shrunk-1].icon
                 end
                 info.paddingX = info.paddingX * 2
+                info.paddingY = (self.parent:GetHeight()-(info.anchor:GetHeight()*2))/2
+                info.paddingY = info.paddingY - (self.parent:GetHeight()-icon.icon:GetHeight())/2
                 separator = 0
-            elseif self.db.CD.Position == self.db.DR.Position then
+            elseif self.db.CD.Position == self.db.DR.Position or (self.db.Shrink.Detach and self.db.Shrink.Position == self.db.DR.Position) then
                 if type ~= self.db.General.Order and otherActive == true then
                     info.anchor = otherAnchor
-                    info.paddingX = info.paddingX + otherPaddingX
+                    info.paddingY = otherPaddingY
                 end
             end
 
@@ -410,6 +447,15 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
             info.prefix1 = "TOP"
             info.prefix2 = info.prefix1
         end
+
+        if info.position == "LEFT" then
+            info.paddingX = info.paddingX * -1
+        else
+            local s1 = info.suffix1
+            info.suffix1 = info.suffix2
+            info.suffix2 = s1
+        end
+
     end
 
     return info

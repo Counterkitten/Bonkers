@@ -21,6 +21,7 @@ function BONK.NewIconFrame(iconID, unitFrame, size, fontSize, drFontSize, priori
     local self = setmetatable({}, BIF)
     self.iconID = iconID
     self.unitFrame = unitFrame
+    self.db = unitFrame.db
     self.parent = unitFrame.parent
     self.size = size
     self.fontSize = fontSize
@@ -93,7 +94,9 @@ function BIF:BeginCooldown(spellID, startTime, duration, category, auraInfo, for
     if self.active then
         if startTime - self.icon.startTime < 1 then return end
 
-        if not self.icon.drtext and not self.textureOverride then
+        local cd = BCD.cooldowns[spellID]
+        local hasCharges = cd.charges ~= nil or (cd.parent and BCD.cooldowns[cd.parent].charges ~= nil)
+        if not hasCharges and not self.icon.drtext and not self.textureOverride then
             self:UpdateCooldownMark(self.icon.timeLeft, self.icon.duration)
         end
     end
@@ -146,11 +149,15 @@ end
 -- BIF:ShouldShrink
 ------
 function BIF:ShouldShrink()
-    if self.icon.forceShrink then
-        return true
-    elseif not self.icon.auraInfo and self.icon.timeLeft > 30 and self.icon.duration - self.icon.timeLeft > 5 then
-        if self.icon.cooldownMark.max and self.icon.timeLeft - self.icon.cooldownMark.max > 30 then
+    if self.db.Shrink.Enabled then
+        local timeLeft = self.icon.timeLeft
+        local duration = self.icon.duration
+        if self.icon.forceShrink then
             return true
+        elseif (not self.icon.auraInfo or not self.db.Shrink.Aura) and timeLeft > self.db.Shrink.Reset and duration - timeLeft > self.db.Shrink.Initial then
+            if self.icon.cooldownMark.max and self.icon.timeLeft - self.icon.cooldownMark.max > self.db.Shrink.Initial then
+                return true
+            end
         end
     end
     return nil
@@ -246,11 +253,7 @@ function BIF:UpdatePosition(info)
 
     if info.anchor and info.anchor ~= self.icon then
         self.icon:ClearAllPoints()
-        if info.position == "LEFT" then
-            self.icon:SetPoint(info.prefix1..info.suffix1, info.anchor, info.prefix2..info.suffix2, -1 * info.paddingX, info.paddingY)
-        else
-            self.icon:SetPoint(info.prefix1..info.suffix2, info.anchor, info.prefix2..info.suffix1, info.paddingX, info.paddingY)
-        end
+        self.icon:SetPoint(info.prefix1..info.suffix1, info.anchor, info.prefix2..info.suffix2, info.paddingX, info.paddingY)
     end
 
     self:Show()
@@ -279,17 +282,17 @@ function BIF:SetSize(size, shrink)
     end
 
     if self.icon and self.size then
-        local height = self.parent:GetHeight()
+        local height = self.parent:GetHeight() * self.size
         local fontSize = self.fontSize
         if shrink then
-            height = height / 2
-            fontSize = (fontSize / 2) + 4
+            height = self.parent:GetHeight() * self.db.Shrink.IconSize
+            fontSize = self.db.Shrink.TimerFontSize
             self.icon.shrunk = true
         else
             self.icon.shrunk = nil
         end
-        self.icon:SetWidth(height*self.size)
-        self.icon:SetHeight(height*self.size)
+        self.icon:SetWidth(height)
+        self.icon:SetHeight(height)
         self.icon.cdtext:SetFont(E["media"].normFont, fontSize, "OUTLINE")
     end
 end

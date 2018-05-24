@@ -95,6 +95,7 @@ BCD.cooldowns = {
 	[214743] = { duration = 60, class = "DEMONHUNTER" }, -- Soul Carver
 		[207407] = { parent = 214743 }, -- Soul Carver (Vengeance)
 	[221527] = { duration = 10, class = "DEMONHUNTER" }, -- Imprison
+	[185123] = { duration = 9, class = "DEMONHUNTER", charges = 2}, -- Throw Glaive
 
 		-- Havoc
 
