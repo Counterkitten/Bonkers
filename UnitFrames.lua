@@ -27,7 +27,6 @@ function BONK.NewFrame(hostile)
     self.hostile = hostile
     self.parent = nil
     self.GUID = nil
-    self.unit = nil
     self.spells = {}
     self.drs = {}
     self.active = {}
@@ -43,8 +42,7 @@ end
 function BUF:AssignFrame(parent, GUID)
     self.parent = parent
     self.GUID = GUID
-    self.unit = parent.unit
-    BONK:Print("Assigning", self.GUID)
+    BONK:Print("Assigning", self.parent.unit, self.GUID)
 
     if not self.hostile then
         if self:TypeEnabled("trinket") then
@@ -53,14 +51,16 @@ function BUF:AssignFrame(parent, GUID)
             self.trinket = trinket
         end
 
-        if self.unit == "player" or UnitGUID(self.unit) == UnitGUID("player") then
+        if self.parent.unit == "player" or UnitGUID(self.parent.unit) == UnitGUID("player") then
             local spec = GetSpecialization()
             self.specID = GetSpecializationInfo(spec)
+            BONK:Print(self.specID)
         else
             self.specID = 1
         end
     else
-        self.specID = GetArenaOpponentSpec(string.sub(self.unit, 6, 6))
+        self.specID = GetArenaOpponentSpec(string.sub(self.parent.unit, 6, 6))
+        BONK:Print(self.specID)
     end
 
     self:UpdateIcons()
@@ -156,7 +156,6 @@ end
 -- BUF:Release
 ------
 function BUF:Release()
-    BONK:Print("Releasing")
     for _,type in pairs(self:GetOrder(true)) do
         self:ReleaseIcons(type)
     end
@@ -166,7 +165,6 @@ function BUF:Release()
     end
     self.trinket = nil
     self.GUID = nil
-    self.unit = nil
     self.parent = nil
 end
 
@@ -195,6 +193,10 @@ end
 function BUF:UpdateIcons()
     self.shrunk = {}
     self.normal = {}
+
+    -- if UnitGUID(self.parent.unit) ~= self.GUID then
+    --     BONK:Print("WRONG PARENT! "..self.GUID)
+    -- end
 
     if self.trinket then
         self:UpdateIconPosition(self.trinket, "trinket", 0)
@@ -326,6 +328,7 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
 
     if other then
         if j == 1 then
+            local separator = ldb.SeparatorX
             if ldb.Position == self.db.Trinket.Position and self.trinket then
                 info.anchor = self.trinket.icon
             end
@@ -336,6 +339,7 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
                     info.anchor = self.shrunk[#self.shrunk-1].icon
                 end
                 info.paddingX = info.paddingX * 2
+                separator = 0
             elseif self.db.CD.Position == self.db.DR.Position then
                 if type ~= self.db.General.Order and otherActive == true then
                     info.anchor = otherAnchor
@@ -343,7 +347,7 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
                 end
             end
 
-            info.paddingX = info.paddingX + ldb.SeparatorX
+            info.paddingX = info.paddingX + separator
             if shrunk then
                 info.prefix1 = "BOTTOM"
             end
@@ -437,5 +441,4 @@ function BUF:TypeEnabled(type)
     elseif type == "drs" then
         return self.db.DR.Enabled
     end
-    BONK:Print("Unknown type "..type)
 end

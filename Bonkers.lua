@@ -33,9 +33,9 @@ function BONK:InsertOptions()
 	E.Options.args.BONK = BSF:GetSettings()
 end
 
-function BONK:Print(message)
+function BONK:Print(...)
     if E.db.BONK and E.db.BONK.General and E.db.BONK.General.Debug and E.db.BONK.General.Debug == true then
-        print(message)
+        print(...)
     end
 end
 

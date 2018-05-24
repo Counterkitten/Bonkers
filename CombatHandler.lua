@@ -15,7 +15,6 @@ end
 -- BCH:Start
 ------
 function BCH:Start()
-    BONK:Print("Starting BCH")
     if self.running == false then
         self.running = true
         self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -46,12 +45,15 @@ end
 -- BCH:ParseCDEvent
 ------
 function BCH:ParseCDEvent(sourceGUID, sourceFlags, destGUID, destFlags, spellID)
-    if BONK.BFM:GetUnitFrame(sourceGUID) then
+    local frame = BONK.BFM:GetUnitFrame(sourceGUID)
+    if frame then
+        if not frame.specID and not self:IsHostile(sourceFlags) then
+            BFM:GetPartySpecs()
+        end
         if spellID == 59752 or spellID == 42292 or spellID == 195710 or spellID == 208683 or spellID == 59752 or spellID == 20589 or spellID == 20594 or spellID == 7744 then
             self:DispatchCast(sourceGUID, "trinket", spellID)
         elseif BCD.cooldowns[spellID] then
             if self:IsSpellEnabled(spellID, sourceFlags) then
-                BONK:Print("Dispatching "..spellID)
                 local auraInfo = self:GetAuraInfo(sourceGUID, sourceFlags, spellID, true)
                 if not auraInfo then
                     auraInfo = self:GetAuraInfo(destGUID, destFlags, spellID)
@@ -61,8 +63,13 @@ function BCH:ParseCDEvent(sourceGUID, sourceFlags, destGUID, destFlags, spellID)
                 end
 
                 self:DispatchCast(sourceGUID, "spells", spellID, nil, nil, auraInfo)
+            else
+                local name, _, _ = GetSpellInfo(spellID)
+                BONK:Print("SPELL NOT TRACKED ", name, spellID)
             end
         end
+    elseif BONK.BZT:InArena() and string.sub(sourceGUID, 1, 7) == "Player-" then
+        BONK:Print("PROBLEM ", sourceGUID)
     end
 end
 
@@ -124,12 +131,12 @@ function BCH:IsSpellEnabled(spellID, flags)
     -- Check for an explicit rule
     local spell = "spell"..spellID
     local parent = nil
-    if BCD.cooldowns[spellID] and BCD.cooldowns[spellID].parent then
-        parent = BCD.cooldowns[spellID].parent
+    if BCD.cooldowns[spellID] and BCD.cooldowns[spellID].parent and type(BCD.cooldowns[spellID].parent) == "number" then
+        parent = "spell"..BCD.cooldowns[spellID].parent
     end
 
-    if type(db[spell]) == "boolean" or (parent and type(db["spell"..parent]) == "boolean") then
-        if db[spell] or db["spell"..parent] then
+    if type(db[spell]) == "boolean" or (parent and type(db[parent]) == "boolean") then
+        if db[spell] or (parent and db[parent]) then
             return true
         end
     end
@@ -208,31 +215,15 @@ end
 ------
 function BCH:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
     local _, eventType, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags,_, spellID = ...
+    if not BONK.BFM:GetUnitFrame(sourceGUID) and BONK.BZT:InArena() and string.sub(sourceGUID, 1, 7) == "Player-" then
+        BONK:Print("FRAME NOT FOUND ", sourceGUID)
+        BONK.BFM:AssignPartyFrames()
+        BONK.BFM:AssignArenaFrames()
+    end
     if (eventType == "SPELL_CAST_SUCCESS" or eventType == "SPELL_AURA_APPLIED") then
         self:ParseCDEvent(sourceGUID, sourceFlags, destGUID, destFlags, spellID)
     elseif (eventType == "SPELL_AURA_REFRESH" or eventType == "SPELL_AURA_REMOVED") then
         self:ParseCDEnded(sourceGUID, spellID)
         self:ParseDREvent(sourceFlags, destGUID, destFlags, spellID)
     end
-end
-
-------
--- BCH:ARENA_COOLDOWNS_UPDATE
-------
-function BCH:ARENA_COOLDOWNS_UPDATE(event, unit)
-    if not unit then return end
-
-    C_PvP.RequestCrowdControlSpell(unit)
-    local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
-
-    BONK:Print("ARENA_COOLDOWNS_UPDATE "..unit.." "..spellID.." "..duration)
-end
-
-------
--- BCH:ARENA_CROWD_CONTROL_SPELL_UPDATE
-------
-function BCH:ARENA_CROWD_CONTROL_SPELL_UPDATE(event, unit, spellID)
-    if not unit then return end
-
-    BONK:Print("ARENA_CROWD_CONTROL_SPELL_UPDATE"..unit.." "..spellID)
 end

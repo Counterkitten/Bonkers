@@ -33,7 +33,6 @@ end
 ------
 function BFM:Start(isTest)
     if self.running == false then
-        BONK:Print("Starting BFM")
         self.running = true
         self:RegisterEvent("GROUP_ROSTER_UPDATE")
         self:RegisterEvent("UNIT_NAME_UPDATE", "GROUP_ROSTER_UPDATE")
@@ -70,7 +69,8 @@ end
 function BFM:GetPartySpecs()
     for i = 1, self:GroupSize(), 1 do
         local frame = self.party[i]
-        if (not frame.specID or frame.specID == 1) and frame.GUID ~= UnitGUID("player") then
+        if (not frame.specID or frame.specID == 1) and frame.unit and frame.GUID ~= UnitGUID("player") then
+            BONK:Print("Getting spec", frame.unit)
             self:RegisterEvent("INSPECT_READY")
             NotifyInspect(frame.unit)
             return
@@ -214,8 +214,6 @@ end
 -- BFM:GROUP_ROSTER_UPDATE
 ------
 function BFM:GROUP_ROSTER_UPDATE(event, a)
-    BONK:Print(event)
-    BONK:Print(a)
     self:AssignPartyFrames()
     self:AssignArenaFrames()
 end
@@ -225,7 +223,11 @@ end
 ------
 function BFM:INSPECT_READY(_, GUID)
     local frame = self:GetUnitFrame(GUID)
-    frame.specID = GetInspectSpecialization(frame.unit)
+    local specID = GetInspectSpecialization(frame.unit)
+    if specID then
+        frame.specID = specID
+    end
+    BONK:Print(frame.specID)
     self:UnregisterEvent("INSPECT_READY")
     self:GetPartySpecs()
 end

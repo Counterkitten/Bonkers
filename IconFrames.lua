@@ -18,7 +18,6 @@ BIF.__index = BIF
 -- BONK:NewIconFrame
 ------
 function BONK.NewIconFrame(iconID, unitFrame, size, fontSize, drFontSize, priority)
-    BONK:Print("New Icon Frame")
     local self = setmetatable({}, BIF)
     self.iconID = iconID
     self.unitFrame = unitFrame
