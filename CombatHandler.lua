@@ -123,11 +123,17 @@ function BCH:IsSpellEnabled(spellID, flags)
 
     -- Check for an explicit rule
     local spell = "spell"..spellID
-    if type(db[spell]) == "boolean" then
-        if db[spell] then
+    local parent = nil
+    if BCD.cooldowns[spellID] and BCD.cooldowns[spellID].parent then
+        parent = BCD.cooldowns[spellID].parent
+    end
+
+    if type(db[spell]) == "boolean" or (parent and type(db["spell"..parent]) == "boolean") then
+        if db[spell] or db["spell"..parent] then
             return true
         end
     end
+    return nil
 end
 
 ------

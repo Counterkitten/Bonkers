@@ -101,6 +101,7 @@ BCD.cooldowns = {
 		[201467] = { duration = 60, class = "DEMONHUNTER", specID = { 577 } }, -- Fury of the Illidari
 		[206491] = { duration = 120, class = "DEMONHUNTER", specID = { 577 } }, -- Nemesis
 		[211048] = { duration = 120, class = "DEMONHUNTER", specID = { 577 } }, -- Chaos Blades
+			[247938] = { parent = 211048 },
 		[211881] = { duration = 35, class = "DEMONHUNTER", specID = { 577, 581 } }, -- Fel Eruption
 
 		-- Vengeance
