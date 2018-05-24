@@ -14,6 +14,7 @@ function BFM:Initialize()
     self.arena = {}
     self.map = {}
     self.running = false
+    self.focus = nil
 
     self:InitFrames(self.party, false)
     self:InitFrames(self.arena, true)
@@ -37,6 +38,7 @@ function BFM:Start(isTest)
         self:RegisterEvent("GROUP_ROSTER_UPDATE")
         self:RegisterEvent("UNIT_NAME_UPDATE", "GROUP_ROSTER_UPDATE")
         self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS", "GROUP_ROSTER_UPDATE")
+        self:RegisterEvent("PLAYER_FOCUS_CHANGED")
 
         self:AssignPartyFrames()
         self:AssignArenaFrames(isTest)
@@ -185,6 +187,13 @@ function BFM:ShowTestIcons()
         BONK.BCH:Start()
     end
 
+    for _,frame in pairs(self.arena) do
+        if frame:IsAssigned() then
+            UF:Configure_Trinket(frame.parent)
+            frame.parent.Trinket:Show()
+        end
+    end
+
     for _,frame in pairs(self.map) do
         frame:HandleCast("trinket", 208683, GetTime(), 600, nil, nil, true)
         frame:HandleCast("spells", 136, GetTime(), 600, nil, nil, true)
@@ -230,4 +239,18 @@ function BFM:INSPECT_READY(_, GUID)
     BONK:Print(frame.specID)
     self:UnregisterEvent("INSPECT_READY")
     self:GetPartySpecs()
+end
+
+------
+-- BFM:PLAYER_FOCUS_CHANGED
+------
+function BFM:PLAYER_FOCUS_CHANGED()
+    if self.focus then
+        self.focus.border:Hide()
+    end
+    local focus = self:GetUnitFrame(UnitGUID('focus'))
+    if focus then
+        self.focus = focus
+        self.focus.border:Show()
+    end
 end

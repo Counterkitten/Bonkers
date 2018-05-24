@@ -63,7 +63,36 @@ function BUF:AssignFrame(parent, GUID)
         BONK:Print(self.specID)
     end
 
+    self.border = self:CreateBorder()
     self:UpdateIcons()
+end
+
+------
+-- BUF:CreateBorder
+------
+function BUF:CreateBorder()
+    local border = CreateFrame("Frame", nil, self.parent)
+
+    border:SetBackdrop({
+      edgeFile = "Interface\\ChatFrame\\ChatFrameBackground",
+      edgeSize = 2,
+      bgFile = nil,
+      insets = {
+        left = 1,
+        right = 1,
+        top = 1,
+        bottom = 1,
+      },
+    });
+    border:SetAllPoints(self.parent)
+    border:SetPoint("BOTTOMLEFT", self.parent, "BOTTOMLEFT", -1, -1);
+    border:SetPoint("TOPRIGHT", self.parent, "TOPRIGHT", 1, 1);
+    border:SetBackdropBorderColor(1, 0, 0, 1);
+    border:SetBackdropColor(0, 0, 0, 0);
+    border:SetFrameLevel(self.parent:GetFrameLevel()+10)
+    border:Hide()
+
+    return border
 end
 
 ------
@@ -166,6 +195,10 @@ function BUF:Release()
     self.trinket = nil
     self.GUID = nil
     self.parent = nil
+    if self.border then
+        self.border:Hide()
+        self.border = nil
+    end
 end
 
 ------
@@ -261,6 +294,7 @@ function BUF:UpdateIconPosition(icon, type, active, j, shrunk)
     if not icon then return end
     if icon.parent ~= self.parent then
         icon:SetParent(self.parent)
+        self.border:SetParent(self.parent)
     end
 
     local info = self:GetPositionInfo(icon, type, active, j, shrunk)
@@ -331,6 +365,8 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
             local separator = ldb.SeparatorX
             if ldb.Position == self.db.Trinket.Position and self.trinket then
                 info.anchor = self.trinket.icon
+            elseif self.parent.db.pvpTrinket and ldb.Position == self.parent.db.pvpTrinket.position and self.parent.Trinket then
+                info.anchor = self.parent.Trinket
             end
             if not shrunk and info.canShrink and #self.shrunk > 0 then
                 if #self.shrunk % 2 == 1 then
