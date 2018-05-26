@@ -368,6 +368,16 @@ function BUF:GetPositionInfo(icon, type, active, j, shrunk)
         info.position = self.db.Shrink.Position
     end
 
+    if type == "trinket" then
+        if info.position == "LEFT" then
+            info.paddingX = info.paddingX * -1
+        else
+            local s1 = info.suffix1
+            info.suffix1 = info.suffix2
+            info.suffix2 = s1
+        end
+    end
+
     if shrunk and self.db.Shrink.Detach and self.db.Shrink.Position ~= "LEFT" and self.db.Shrink.Position ~= "RIGHT" then
         info.detached = true
         if info.position:find("LEFT") then
