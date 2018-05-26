@@ -95,7 +95,7 @@ function BIF:BeginCooldown(spellID, startTime, duration, category, auraInfo, for
         if startTime - self.icon.startTime < 1 then return end
 
         local cd = BCD.cooldowns[spellID]
-        local hasCharges = cd.charges ~= nil or (cd.parent and BCD.cooldowns[cd.parent].charges ~= nil)
+        local hasCharges = cd and (cd.charges ~= nil or (cd.parent and BCD.cooldowns[cd.parent].charges ~= nil))
         if not hasCharges and not self.icon.drtext and not self.textureOverride then
             self:UpdateCooldownMark(self.icon.timeLeft, self.icon.duration)
         end
