@@ -170,7 +170,7 @@ end
 ------
 -- BCH:GetTrinketCooldown
 ------
-function BCH:GetTrinketCooldown(target, spellID)
+function BCH:GetTrinketCooldown(spellID)
     if spellID == 59752 or spellID == 208683 then
         -- PVP trinkets or Gladiator's Medallion
         return 120
