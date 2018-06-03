@@ -15,12 +15,10 @@ end
 -- BCH:Start
 ------
 function BCH:Start()
-    if self.running == false then
-        self.running = true
-        self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-        --self:RegisterEvent("ARENA_COOLDOWNS_UPDATE")
-    	--self:RegisterEvent("ARENA_CROWD_CONTROL_SPELL_UPDATE")
-    end
+    self.running = true
+    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    --self:RegisterEvent("ARENA_COOLDOWNS_UPDATE")
+	--self:RegisterEvent("ARENA_CROWD_CONTROL_SPELL_UPDATE")
 end
 
 ------
@@ -29,6 +27,13 @@ end
 function BCH:Stop()
     self.running = false
     self:UnregisterAllEvents()
+end
+
+------
+-- BCH:IsRunning
+------
+function BCH:IsRunning()
+    return self.running
 end
 
 ------

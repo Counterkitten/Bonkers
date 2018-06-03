@@ -8,12 +8,7 @@
 
 Libs\load_libs.xml
 
-Cooldowns.lua
-Settings.lua
+Config\load_config.xml
 Bonkers.lua
-EventHandler.lua
-IconFrames.lua
-UnitFrames.lua
-FrameManager.lua
-CombatHandler.lua
-ZoneTracker.lua
+Core\load_core.xml
+KickBar\load_kickbar.xml

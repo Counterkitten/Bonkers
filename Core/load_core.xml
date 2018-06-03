@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="EventHandler.lua"/>
+    <Script file="IconFrames.lua"/>
+    <Script file="UnitFrames.lua"/>
+    <Script file="FrameManager.lua"/>
+    <Script file="CombatHandler.lua"/>
+    <Script file="ZoneTracker.lua"/>
+</Ui>

@@ -2,6 +2,11 @@ local E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, Profi
 
 BSF = {}
 
+function BSF:Initialize(BONK, BKB)
+    self.BONK = BONK
+    self.BKB = BKB
+end
+
 function BSF:GetSettings()
     return {
 		order = 1,
@@ -618,5 +623,68 @@ function BSF:GetIconDefaults(trinket)
             ["Position"] = "TOPLEFT",
             ["PerRow"] = 10
         }
+    }
+end
+
+function BSF:GetKBSettings()
+    return {
+		order = 2,
+		type = "group",
+		name = "|cff9482c9Bonkers-KickBar|r",
+        childGroups = "tab",
+		args = {
+            General = {
+                order = 1,
+                type = "group",
+                name = "General",
+                args = self:GeneralKBSettings()
+            },
+		},
+	}
+end
+
+function BSF:GeneralKBSettings()
+    return {
+        EnabledP = {
+            order = 1,
+            type = "toggle",
+            name = "Enable Party Bar",
+            get = function(info)
+                return E.db.BKB.Party.Enabled
+            end,
+            set = function(info, value)
+                E.db.BKB.Party.Enabled = value
+                self.BKB:Update()
+            end,
+        },
+        EnabledA = {
+            order = 2,
+            type = "toggle",
+            name = "Enable Arena Bar",
+            get = function(info)
+                return E.db.BKB.Arena.Enabled
+            end,
+            set = function(info, value)
+                E.db.BKB.Arena.Enabled = value
+                self.BKB:Update()
+            end,
+        },
+    }
+end
+
+function BSF:GetKBDefaults()
+    local def = {
+        ["General"] = {
+        },
+        ["Party"] = self:GetKBIconDefaults(),
+        ["Arena"] = self:GetKBIconDefaults()
+    }
+
+    return def
+end
+
+function BSF:GetKBIconDefaults()
+    return {
+        ["Enabled"] = true
     }
 end

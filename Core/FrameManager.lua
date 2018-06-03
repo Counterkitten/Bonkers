@@ -33,16 +33,14 @@ end
 -- BFM:Start
 ------
 function BFM:Start(isTest)
-    if self.running == false then
-        self.running = true
-        self:RegisterEvent("GROUP_ROSTER_UPDATE")
-        self:RegisterEvent("UNIT_NAME_UPDATE", "GROUP_ROSTER_UPDATE")
-        self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS", "GROUP_ROSTER_UPDATE")
-        self:RegisterEvent("PLAYER_FOCUS_CHANGED")
+    self.running = true
+    self:RegisterEvent("GROUP_ROSTER_UPDATE")
+    self:RegisterEvent("UNIT_NAME_UPDATE", "GROUP_ROSTER_UPDATE")
+    self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS", "GROUP_ROSTER_UPDATE")
+    self:RegisterEvent("PLAYER_FOCUS_CHANGED")
 
-        self:AssignPartyFrames()
-        self:AssignArenaFrames(isTest)
-    end
+    self:AssignPartyFrames()
+    self:AssignArenaFrames(isTest)
 end
 
 ------
@@ -52,6 +50,13 @@ function BFM:Stop()
     self.running = false
     self:UnregisterAllEvents()
     self:ReleaseAllFrames()
+end
+
+------
+-- BFM:IsRunning
+------
+function BFM:IsRunning()
+    return self.running
 end
 
 ------
